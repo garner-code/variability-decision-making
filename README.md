@@ -1,4 +1,4 @@
-# Investigating the relationship between cortical variability and decision-making   
+# Eye-foraging, dopamine, striatal and cortical variability   
 
 
 Code for collection and analysis of behavioural/EEG data 
@@ -8,14 +8,18 @@ Free to use and share, please cite author/source
 Email: getkellygarner@gmail.com
 
 A study conducted with: 
-Shivam Kalhan shiv.kalhan@gmail.com
-Marta Garrido m.garrido@uq.edu.au
+Ole Jensen
+Paul Dux
+Li-Ann Leow
+Marta Garrido 
 
-This repository contains the software written for collecting the behavioural and EEG data for the project described at:
+This repository contains the software written for collecting the behavioural and EEG data for the projects described at:
 https://osf.io/k5ury/wiki/home/
+and
 
 Dependencies are listed in the notes in the code.  
 Run all *.m files from the same folder. Keep all *.m files in the folder from which the files are stored. See the notes within the *.m files for further details.  
 
 ### how to use this repository:  
-For task code, see the folder iforage_task_code_redSMI-v1  
+For the task code for https://osf.io/k5ury/wiki/home/, see the folder iforage_task_code_redSMI-v1  
+For [x] see iforage_DA_task_code_redSMI

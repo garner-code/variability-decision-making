@@ -1,4 +1,4 @@
-function [trial_struct, cert_ps, uncert_ps] = generate_trial_structure_v3(ntrials, sub_loc_config, cert_probs, uncert_probs)
+function [trial_struct, cert_ps, uncert_ps] = generate_trial_structure_v3(ntrials, sub_loc_config, cert_probs)
 
 % [trial_struct] = 5 x ntrials matrix, with columns of trial number,
 % condition (1, 2), and tgt location, tgt prob, and tgt id
@@ -19,14 +19,26 @@ cert_cond_tn = sort(trial_blocs(1:length(trial_blocs)/2), 'ascend');
 uncert_cond_tn = sort(trial_blocs(length(trial_blocs)/2+1:length(trial_blocs)), 'ascend');
 
 % now get the location/prob configuration for that participant and session
-cert_base = zeros(4,4);
-cert_base([4, 6, 9, 15]) = 1;
-cert_config = rot90(cert_base, sub_loc_config(1));
+% I randomly selected a tile from each quadrant, and allocated to each
+% context - so for each context, a target appears in each location but
+% there is no overlapping
+x_mat = zeros(4,4);
+a = x_mat;
+a([6,7,9,16])=1;
+b=x_mat;
+b([3,5,11,13])=1;
+c=x_mat;
+c([2,8,12,14])=1;
+d=x_mat;
+d([1,4,10,15])=1;
+bases = cat(3, a,b,c,d);
+
+cert_config = bases(:,:,sub_loc_config(1));
 cert_ps = zeros(1,16);
 cert_ps(find(cert_config)) = cert_probs(cert_probs > 0);
 
 % second display condition for this session
-uncert_config = rot90(cert_base, sub_loc_config(2));
+uncert_config = bases(:,:,sub_loc_config(2));
 uncert_ps = zeros(1,16);
 uncert_ps(find(uncert_config)) = cert_probs(cert_probs > 0);
 

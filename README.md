@@ -22,4 +22,4 @@ Run all *.m files from the same folder. Keep all *.m files in the folder from wh
 
 ### how to use this repository:  
 For the task code for https://osf.io/k5ury/wiki/home/, see the folder iforage_task_code_redSMI-v1  
-For [x] see iforage_DA_task_code_redSMI
+For [https://osf.io/xn6d2/](https://osf.io/xn6d2/) see iforage_DA_task_code_redSMI

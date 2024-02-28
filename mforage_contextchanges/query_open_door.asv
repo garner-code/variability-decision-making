@@ -1,0 +1,123 @@
+function [emr_cal, tgt_found, didx, startTime, door_on_flag] = query_open_door(trial_start, sub, sess, ...
+    trial_n, cond, door_p, tgt_flag, window, ...
+    backRect, xCenter, yCenter, backCol, ...
+    doorRects, doorClosedCol, doorOpenCol,...
+    didx, fid, fform)
+
+% QUERY_OPEN_DOOR: this function queries whether the selected door is the
+% target door or not.
+% if the target, the tgt_found flag is set and we move to the next stage of
+% the trial (presenting the target)
+% if not, then a darker door is presented for 200 ms and then returned to
+% its original colour. % KG: MFORAGE: this number is variable
+
+tgt_found    = 0;
+% get refrsh rate
+ifi = Screen('GetFlipInterval', window);
+waitframes = 1;
+
+% check if the selected door is a target door
+if didx == tgt_flag
+    % record the door numbber into the results file
+    door_on_flag = 0;
+    d_p_idx = door_p(didx);
+    tgt_found = 1;
+    tgt_on = 1;
+
+else
+    
+    d_p_idx = 0;
+    tgt_found = 0;
+    tgt_found = 0;
+    tgt
+    % draw the open door
+    %       frames_on = .02/ifi; % ~20 ms
+    tmp_door_cols          = doorClosedCol;
+    tmp_door_cols(:, didx) = doorOpenCol;
+    button_idx = 1; % KG: MFORAGE: if I am good I will ultimately set this in the 'run...' script
+
+    % poll the mouse to learn when the door has been no longer pressed
+    [x,y,buttons] = GetMouse(window);
+
+    % the below is going to have to include some code that detects when the
+    % mouse x and y has moved outside of the region of the selected door, 
+    % if so, will manually break the loop and exit this function
+    while buttons(button_idx)
+
+        draw_background(window, backRect, xCenter, yCenter, backCol);
+        draw_doors(window, doorRects, tmp_door_cols);
+        Screen('DrawingFinished', window);
+        vbl = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi); % limit samples to flip rate
+        fprintf(fid, fform, sub, sess, trial_n, cond, 999, 1, didx, d_p_idx, tgt_flag, tgt_found, x, y); % KG: MFORAGE: Check this matches up with other function and BEH_FORM
+
+    end
+
+end
+
+
+
+
+
+        keep_door_open = 0;
+
+
+    else
+        tgt_found = 0;
+        door_on_flag = 1;
+        keep_door_open = 1;
+    end
+  
+    while any(keep_door_open)
+        
+        draw_background(window, backRect, xCenter, yCenter, backCol);
+        draw_doors(window, doorRects, tmp_door_cols);
+        Screen('FillOval', window, fixCol, fixRect, maxFixDiam);
+        Screen('DrawingFinished', window);  
+        
+        [x,y,t] = SMI_Redm_GetGazeCoords(REDm_info); % where is fixation?
+
+        if ~isempty(x)
+            dur   = GetSecs - startTime;
+            timer = GetSecs - trial_start;
+            door_check = doorSample(xPos, yPos, x, y); % returns distance of coordinates from all door centres
+            if isempty(collect_idxs)
+                collect_idxs = door_check;
+            else
+                collect_idxs = cat(3, door_check, collect_idxs);
+            end
+            
+            didx = find(door_check < r);
+            d_p_idx = door_p(didx);
+            d_pressed = 1; % 1 because door is open, 0 if not
+            if isempty(didx)
+                didx      = 0;
+                d_p_idx   = 0;
+                d_pressed = 0;
+            end
+            
+            % is the target available to be found?
+            tgt_available = (GetSecs - trial_start) > t_until_target_onset;
+            % send current info to output file
+            fprintf(fid, fform, sub, sess, trial_n, cond, timer, d_pressed, didx, d_p_idx, tgt_flag, tgt_available, tgt_found, dur, x, y);
+                             % 'sub','sess','t', 'cond','onset','open_d','door','door_p','tgt_door','tgt_on','tgt_found','depress_dur','x','y'
+            if size(collect_idxs,3) > sample_n % check that all the collected door indexes are the same value and that it has been the same for 50 ms worth of samples
+                test = collect_idxs(:,:,1:sample_n);
+                % does the time spent away from the radius of the open door centre meet
+                % criteria?
+                test = test < r; % get a logical array
+                test = sum(test,3); % sum over array
+                
+                if didx == 0 || test(didx) <= thresh_n   % if the door that was opened just prior to this loop is below threshold for fixation samples, then close it 
+                    door_on_flag = 0;
+                    startTime = NaN;
+                    SMI_Redm_SendMessage(sprintf('%.3f_Door_%d_closed', t, didx));
+                    keep_door_open = 0;
+                end
+                
+            end
+        else
+        end
+ 
+    end
+end
+end

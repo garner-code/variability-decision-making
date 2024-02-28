@@ -1,0 +1,2 @@
+507480	iViewX API ApiLogger - Status: 1
+8.45868e+006	End of Log file

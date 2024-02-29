@@ -64,19 +64,19 @@ randstate = rand('state');
 % probabilities of target location
 ntrials = 80; % per condition - must be a multiple of 20
 load('probs_cert_world_v2.mat'); % this specifies that there are 4 doors with p=0.25 each 
-cert_probs   = probs_cert_world;
+door_probs   = probs_cert_world;
 clear probs_cert_world
 
 % KG: MFORAGE: will change the below
 if sub.stage == 1 % if its initial learning
     ntrials = 200; % KG: MFORAGE - a max I put for now but we might want to reduce this
-    
+    generate_trial_structure_v3(ntrials, sub_infos(sub.num), door_probs);
 elseif sub.stage == 2
 
 elseif sub.stage == 3
 
 end
-[trials, cert_p_order, uncert_p_order] = generate_trial_structure_v3(ntrials, sub_loc_config, cert_probs);
+[trials, cert_p_order, uncert_p_order] = generate_trial_structure_v3(ntrials, sub_loc_config, door_probs);
 door_ps = [cert_p_order; uncert_p_order; repmat(1/16, 1, 16)]; % create a tt x door matrix for display referencing later
 
 % KG: MFORAGE: keep the below but the details may change
@@ -108,7 +108,7 @@ else
     sess_params_mat_name = [sub_dir, sprintf('/ses-%d', sub.sess), '/beh/', sprintf('sub-%d-ses-%d_task-iforage-v%d_sess-params', sub.num, sub.sess, version)];
 end
 
-save(sess_params_mat_name, 'sub', 'trials', 'beh_form', 'ntrials', 'cert_probs', ...
+save(sess_params_mat_name, 'sub', 'trials', 'beh_form', 'ntrials', 'door_probs', ...
     'sub_loc_config', 'door_ps');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

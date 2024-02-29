@@ -1,4 +1,4 @@
-function [trial_struct, cert_ps, uncert_ps] = generate_trial_structure_learn(ntrials, sub_loc_config, cert_probs)
+function [trial_struct, cert_ps, uncert_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs)
 %%%%%
 % GENERATE_TRIAL_STRUCTURE_LEARN
 % generate the trial structure for the initial learning stage
@@ -16,37 +16,32 @@ function [trial_struct, cert_ps, uncert_ps] = generate_trial_structure_learn(ntr
 trial_struct = zeros(ntrials*2, 4);
 trial_struct(:,1) = 1:length(trial_struct(:,1));
 
-% get random numbers across trials to allocate to each condition (cert and
-% uncert is legacy language, don't worry about the semantics, it just
-% disambiguates 2 conditions)
-trial_blocs  = datasample(1:1:max(trial_struct(:,1)), length(1:1:max(trial_struct(:,1))), 'Replace', false);
-cert_cond_tn = sort(trial_blocs(1:length(trial_blocs)/2), 'ascend');
-uncert_cond_tn = sort(trial_blocs(length(trial_blocs)/2+1:length(trial_blocs)), 'ascend');
+% define whether context 1 or context 2 comes first - wayoooo
+[ttrials, ~] = size(trial_struct);
+trial_struct(1:(ttrials/2),2) = sub_config(3);
+trial_struct((ttrials/2)+1:ttrials,2) = 3 - sub_config(3);
 
-% now get the location/prob configuration for that participant and session
-% I randomly selected a tile from each quadrant, and allocated to each
-% context - so for each context, a target appears in each location but
-% there is no overlapping
+% now get the location/prob configuration for this session
+
 x_mat = zeros(4,4);
 a = x_mat;
 a([6,7,9,16])=1;
 b=x_mat;
 b([3,5,11,13])=1;
-c=x_mat;
-c([2,8,12,14])=1;
-d=x_mat;
-d([1,4,10,15])=1;
-bases = cat(3, a,b,c,d);
+% c=x_mat;
+% c([2,8,12,14])=1;
+% d=x_mat;
+% d([1,4,10,15])=1;
+bases = cat(3, a,b);
 
-cert_config = bases(:,:,sub_loc_config(1));
-cert_ps = zeros(1,16);
-cert_ps(find(cert_config)) = cert_probs(cert_probs > 0);
+loc_config = bases;
+ca_ps = zeros(1,16);
+ca_ps(find(loc_config(:,:,sub_config(3)))) = door_probs(door_probs > 0);
 
-% second display condition for this session
-uncert_config = bases(:,:,sub_loc_config(2));
-uncert_ps = zeros(1,16);
-uncert_ps(find(uncert_config)) = cert_probs(cert_probs > 0);
+cb_ps = zeros(1,16);
+cb_ps(find(loc_config(:,:,3-sub_config(3)))) = door_probs(door_probs > 0);
 
+% KG: MFORAGE: U2H
 % now generate the tgt locs for each trial in each condition
 cert_locs = get_locs_given_probs_v2(ntrials, cert_ps);
 uncert_locs = get_locs_given_probs_v2(ntrials, uncert_ps);

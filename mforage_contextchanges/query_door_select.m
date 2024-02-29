@@ -1,11 +1,12 @@
-function [didx, door_on_flag] = query_door_select(door_on_flag, ...
+function [didx, door_on_flag, x, y] = query_door_select(door_on_flag, ...
     doorClosedCol, window, ...
-    backRect,  xCenter, ...
-    yCenter, backCol, doorRects, ...
+    edgeRect, backRect,  xCenter, ...
+    yCenter, edgeCol, backCol, doorRects, ...
     fid, fform, sub, sess, ...
     trial_n, cond, tgt_flag, ...
     xPos, yPos, ...
-    r, door_probs, trialStart)
+    r, door_probs, trialStart, ...
+    button_idx, context_on)
 
 % DESC: this code will continuously check whether a participant
 % has selected a door by clicking the left mouse button
@@ -21,7 +22,9 @@ waitframes = 1;
 
 % draw the open door
 tmp_door_cols = doorClosedCol;
+
 % change door colour
+draw_edge(window, edgeRect, xCenter, yCenter, edgeCol, trialStart, context_on);
 draw_background(window, backRect, xCenter, yCenter, backCol);
 draw_doors(window, doorRects, tmp_door_cols);
 Screen('DrawingFinished', window);
@@ -29,6 +32,7 @@ vbl = Screen('Flip', window);
 
 while ~any(start_test)
 
+    draw_edge(window, edgeRect, xCenter, yCenter, edgeCol, trialStart, context_on);
     draw_background(window, backRect, xCenter, yCenter, backCol);
     draw_doors(window, doorRects, tmp_door_cols);
     Screen('DrawingFinished', window);
@@ -42,7 +46,6 @@ while ~any(start_test)
     % so, end the while loop
 
     % has a button been pressed?
-    button_idx = 1; % which button do you want to poll?
     if buttons(button_idx)
         door_check = doorSample(xPos, yPos, x, y); % returns distance of
         % mouse coordinates from all door centres

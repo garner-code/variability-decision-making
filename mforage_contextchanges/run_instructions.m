@@ -1,6 +1,6 @@
 function [] = run_instructions(window, screenYpixels)
 
-
+%Screen('TextFont', 'misc-fixed-bold-r-normal--0-0-75-75-c-0-iso8859-1')
 Screen('TextStyle', window, 1);
 Screen('TextSize', window, 20);
 instructions = ...

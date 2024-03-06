@@ -53,16 +53,18 @@ sub_dir = make_sub_folders(sub.num, sub.sess);
 version   = 1; % change to update output files with new versions
 
 % set randomisation seed based on sub/sess number
-r_num = [num2str(sub.num) num2str(sub.sess)];
+r_num = [num2str(sub.num) num2str(sub.sess) num2str(sub.stage)];
 r_num = str2double(r_num);
 rand('state',r_num);
 randstate = rand('state');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%% generate trial structure for participants
+load('sub_infos.mat'); % matrix of counterbalancing info
+
 [beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.sess, sub_dir, version); % this is the behaviour and the events log
 % probabilities of target location
-ntrials = 80; % per condition - must be a multiple of 20
+%ntrials = 80; % per condition - must be a multiple of 20
 load('probs_cert_world_v2.mat'); % this specifies that there are 4 doors with p=0.25 each 
 door_probs   = probs_cert_world;
 clear probs_cert_world
@@ -70,7 +72,7 @@ clear probs_cert_world
 % KG: MFORAGE: will change the below
 if sub.stage == 1 % if its initial learning
     ntrials = 200; % KG: MFORAGE - a max I put for now but we might want to reduce this
-    generate_trial_structure_v3(ntrials, sub_infos(sub.num), door_probs);
+    generate_trial_structure_v3(ntrials, sub_infos(sub.num,:), door_probs);
 elseif sub.stage == 2
 
 elseif sub.stage == 3

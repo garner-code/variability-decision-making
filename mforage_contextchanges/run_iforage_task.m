@@ -1,5 +1,5 @@
 % Variability and learning: visual foraging task
-% K. Garner 2018
+% K. Garner 2018/2023
 % NOTES:
 %
 % Dimensions calibrated for 530 mm x 300 mm ASUS VG248 monitor (with viewing distance
@@ -7,17 +7,15 @@
 %
 % If running on a different monitor, remember to set the monitor
 % dimensions, eye to monitor distances, and refresh rate (lines 169-178)!!!!
-% RUN ON SINGLE MONITOR DISPLAY ONLY
 %
-% Psychtoolbox 3.0.14 - Flavor: beta - Corresponds to SVN Revision 8301
-% Matlab R2015a|R2017a|R2013a|R2012a
-% Also run on Psychtoolbox 3.0.11
-%
-% SMI eyetracker functionality requires use of 32-bit Matlab
+% Psychtoolbox XXXX - Flavor: 
+% Matlab XXXX
 %
 % Task is a visual search/foraging task. Participants seek the target which
 % is randomly placed behind 1 of 16 doors. There are two contexts to learn
-% within each session (2 sessions in total) - with 4 doors in each display being allocated p=.25
+% within each session (2 sessions in total) - 
+% with 4 doors in each display being allocated p=.25
+% Rate of switches between contexts depends on stage and condition 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -26,9 +24,10 @@
 sca
 clear all
 clear mex
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% set up outputs
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% session settings
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % make .json files functions to be written
 %%%%%% across participants
 % http://bids.neuroimaging.io/bids_spec.pdf
@@ -37,108 +36,140 @@ clear mex
 % rate), red smi system, description of file structure
 %%%%%% manual things
 sub.num = input('sub number? ');
-sub.sess = input('session? '); % 1 or 2
 sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
-sub_dir = make_sub_folders(sub.num, sub.sess);
+sub.tpoints = input('points? '); % enter points scored so far
+sub.experiment = input('experiment? 1 for ts, 2 for lt ');
+
+experiment = sub.experiment;
+if experiment == 1
+    exp_code = 'ts';
+elseif experiment == 2
+    exp_code = 'lt';
+end
+sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
 % sub.hand = input('left or right hand? (1 or 2)?');
 % sub.sex = input('sub sex (note: not gender)? (1=male,2=female,3=inter)');
 % sub.age = input('sub age?');
 
 % get sub info for setting up counterbalancing etc
 % sub infos is a matrix with the following columns
-% sub num, group, learning counterbalancing (1 [AB] vs 2 [BA]), 
-% training counterbalancing (1 [AB] vs 2 [BA] vs 3 [.2switch]),
+% sub num, group, learning counterbalancing (1 [XY] vs 2 [YX]), 
+% training counterbalancing (1 [XY] vs 2 [YX] vs 3 [.2switch]),
 % test counterbalancing (something) %%% KG: will possibly add experiment in
 % here also
 version   = 1; % change to update output files with new versions
-
+stage = sub.stage;
 % set randomisation seed based on sub/sess number
-r_num = [num2str(sub.num) num2str(sub.sess) num2str(sub.stage)];
+r_num = [num2str(sub.num) num2str(sub.stage)];
 r_num = str2double(r_num);
 rand('state',r_num);
 randstate = rand('state');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%% generate trial structure for participants
+%%%% generate trial structure for participants and setup log files
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 load('sub_infos.mat'); % matrix of counterbalancing info
+% KG: MFORAGE: PUT NOTES HERE RE DEFINITION
+% sub_infos is an nsubs x by X column matrix with the following:
+% col 1 = subject number
+% col 2 = training group (1 = single switch, 2 = multi-switch)
+% col 3 = colour context map
+% col 4 = which context learned first
+% col 5 = which context goes first in train
+% col 6 = complete vs partial transfer 1st
 
-[beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.sess, sub_dir, version); % this is the behaviour and the events log
-% probabilities of target location
-%ntrials = 80; % per condition - must be a multiple of 20
+[beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code); % this is the behaviour and the events log
+
+% probabilities of target location and number of doors
 load('probs_cert_world_v2.mat'); % this specifies that there are 4 doors with p=0.25 each 
 door_probs   = probs_cert_world;
-clear probs_cert_world
+clear probs_cert_world 
 
 % KG: MFORAGE: will change the below
-if sub.stage == 1 % if its initial learning
+if stage == 1 % if its initial learning
+    n_practice_trials = 5;
     ntrials = 200; % KG: MFORAGE - a max I put for now but we might want to reduce this
-    generate_trial_structure_v3(ntrials, sub_infos(sub.num,:), door_probs);
-elseif sub.stage == 2
-
-elseif sub.stage == 3
-
+    [trials, ca_ps, cb_ps] = generate_trial_structure_learn(ntrials, sub_infos(sub.num,:), door_probs);
+elseif stage == 2
+    n_practice_trials = 0;
+    ntrials = 4*40; % must have whole integers for p=.7/.3
+    switch_prob = .3;
+    [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_infos(sub.num,:), door_probs, switch_prob);
+elseif stage == 3
+    n_practice_trials = 0;
+    if experiment == 1
+        ntrials = 4*20;
+        switch_prob = .4;
+        [trials, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_infos(sub.num,:), door_probs, switch_prob);
+    elseif experiment == 2
+        ntrials = 4*10;
+        [trials, ca_ps, cb_ps] = generate_trial_structure_lttest(ntrials, sub_infos(sub.num,:), door_probs);
+    end
 end
-[trials, cert_p_order, uncert_p_order] = generate_trial_structure_v3(ntrials, sub_loc_config, door_probs);
-door_ps = [cert_p_order; uncert_p_order; repmat(1/16, 1, 16)]; % create a tt x door matrix for display referencing later
+
+door_ps = [ca_ps; cb_ps; repmat(1/16, 1, 16)]; % create a tt x door matrix for display referencing later
+ndoors = length(ca_ps);
 
 % KG: MFORAGE: keep the below but the details may change
 % add the 5 practice trials to the start of the matrix
-n_practice_trials = 5;
-practice = [ repmat(999, n_practice_trials, 1), ...
-    repmat(3, n_practice_trials, 1), ...
-    datasample(1:16, n_practice_trials)', ...
-    repmat(999, n_practice_trials, 1), ...
-    datasample(1:100, n_practice_trials)'];
-trials   = [practice; trials];
-    
-if sub.num < 10
-    trlfname   = sprintf('sub-0%d_ses-%d_task-mforage-v%d_trls.tsv', sub.num, sub.sess, version);
-else
-    trlfname   = sprintf('sub-%d_ses-%d_task-mforage-v%d_trls.tsv', sub.num, sub.sess, version);
-end
-% define trial log file % KG: MFORAGE: the below format may change -
-% CAUTION
-trlg_fid = fopen([sub_dir, sprintf('/ses-%d', sub.sess), '/beh/' trlfname], 'w');
-fprintf(trlg_fid, '%s\t%s\t%s\t%s\t%s\t%s\t%s\n', 'sub','sess','t','cond','loc','prob','tgt');
-fprintf(trlg_fid, '%d\t%d\t%d\t%d\t%d\t%d\t%d\n', [repmat(sub.num, 1, length(trials(:,1)))', repmat(sub.sess, 1, length(trials(:,1)))', trials]');
-fclose(trlg_fid);
-
-% save the subject parameters for this session    
-if sub.num < 10
-    sess_params_mat_name = [sub_dir, sprintf('/ses-%d', sub.sess), '/beh/', sprintf('sub-%0d-ses-%d_task-iforage-v%d_sess-params', sub.num, sub.sess, version)];
-else
-    sess_params_mat_name = [sub_dir, sprintf('/ses-%d', sub.sess), '/beh/', sprintf('sub-%d-ses-%d_task-iforage-v%d_sess-params', sub.num, sub.sess, version)];
+if stage == 1
+    practice = [ repmat(999, n_practice_trials, 1), ...
+        repmat(3, n_practice_trials, 1), ...
+        datasample(1:16, n_practice_trials)', ...
+        repmat(999, n_practice_trials, 1), ...
+        datasample(1:100, n_practice_trials)'];
+    trials   = [practice; trials];
 end
 
-save(sess_params_mat_name, 'sub', 'trials', 'beh_form', 'ntrials', 'door_probs', ...
-    'sub_loc_config', 'door_ps');
+write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
+    door_probs, sub_infos(sub.num,:), door_ps, sub_dir);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% randonly define colours allotted to each condition
-% KG: MFORAGE: the way colours are used will change
-green = [27, 158, 119];
-orange = [217, 95, 2];
-purple = [117, 112, 179];
-pink = [189, 41, 138];
-lightener = 50;
-hole = [50, 50, 50];
-all_colours = cat(3, [green+lightener; green; hole], ...
-                       [orange+lightener; orange; hole], ...
-                       [purple+lightener; purple; hole], ...
-                       [pink+lightener; pink; hole]);
-prac_world   = [160 160 160; 96 96 96; 0 0 0];
+%%%%%%%% define colour settings for worlds
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Notes - changes = defining one set of greys for all door displays
+% Context cue goes around the edge and will need something defined
+green = [27, 158, 119]; % context X
+orange = [217, 95, 2]; % context Y
+base_context_learn = [green; orange];
+purple = [117, 112, 179]; % transfer A
+pink = [189, 41, 138]; % transfer B
+transfer_context_learn = [purple; pink];
+hole = [20, 20, 20];
+col   = [160 160 160]; % set up the colours of the doors
+doors_closed_cols = repmat([96, 96, 96]', 1, ndoors); 
+door_open_col = hole;
 
-% get the paticipant colour mappings
-load('col_assigns.mat');
-sub_cols = reshape(col_assigns(sub.num,:), 2, 2)';
-sub_cols = sub_cols(sub.sess, :);
-world_colours = cat(3, all_colours(:,:,sub_cols(1)), all_colours(:,:,sub_cols(2)), prac_world);
+if stage == 1
+    context_cols =  [base_context_learn(1, :); ... % we counterbalance which config is assigned to A, and which is assigned to B,
+                     base_context_learn(2, :); % so we hold the colours constant, which will result in counterbalancing
+                     [0, 0, 0]]; % finish with practice context cols
+elseif stage == 2
+    context_cols = [col; col; col];
+elseif stage == 3
+    if experiment == 1
+       context_cols =  [base_context_learn(1, :); ... % we counterbalance which config is assigned to A, and which is assigned to B,
+                        base_context_learn(2, :);
+                        col]; % for when there is no trial switch
+
+    elseif experiment == 2
+    context_cols =  [transfer_context_learn(1, :); ... % we counterbalance which config is assigned to A, and which is assigned to B,
+                     transfer_context_learn(2, :); % so we hold the colours constant, which will result in counterbalancing
+                     [0, 0, 0]]; % finish with practice context cols
+
+    end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% other considerations
-breaks = 20; % how many trials inbetween breaks?
+%%%%%%% other considerations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+breaks = 40; % how many trials inbetween breaks?
 count_blocks = 0;
-button_idx = 1; % which mouse button do you wish to poll?
+button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%% SET UP PSYCHTOOLBOX THINGS
@@ -149,7 +180,7 @@ KbName('UnifyKeyNames');
 GetSecs;
 AssertOpenGL
 Screen('Preference', 'SkipSyncTests', 1);
-%PsychDebugWindowConfiguration;
+PsychDebugWindowConfiguration;
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
 screens = Screen('Screens');
@@ -184,31 +215,45 @@ doorPix    = 26.4*pix_per_mm*display_scale; % KG: MFORAGE: May want to change no
 xPos = repmat(xPos, 4, 1);
 yPos = repmat(yPos', 1, 4);
 r = doorPix/2; % radius is the distance from center to the edge of the door
-col = [176, 112, 218]; % KG: MFORAGE: check if can delete this
 
 % timing % KG: MFORAGE: timing is largely governed by participant's button
 % presses, not much needs to be defined here
 time.ifi = Screen('GetFlipInterval', window);
 time.frames_per_sec = round(1/time.ifi);
-time.context_cue_on = round(2/time.ifi); % KG: MFORAGE - this will change depending on experimental stage
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%% DONE SETTING UP PSYCHTOOLBOX THINGS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if stage == 1
+    time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
+elseif stage == 2
+    time.context_cue_on = round(1000/time.ifi); % same as above but we'll only be using the grey colour
+elseif stage == 3
+    if experiment == 1
+        time.context_cue_on = round(.75/time.ifi);
+    elseif experiment == 2
+        time.context_cue_on = round(1000/time.ifi); 
+    end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% now we're ready to run through the experiment
-
+%%%%%%%%% now we're ready to run through the experiment
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 SetMouse(xCenter, yCenter, window);
+
+% things to collect during the experiment
+if stage == 1
+    moves_record = [];
+    moves_goal = 4;
+    switch_point = 0;
+end
+tpoints = sub.tpoints;
 
 for count_trials = 1:length(trials(:,1))
 
  
-    if count_trials == 1
+    if stage == 1 && count_trials == 1
        run_instructions(window, screenYpixels);
         KbWait;
-        WaitSecs(1);
+        WaitSecs(1); 
     end
 
     %%%%%%% trial start settings
@@ -216,13 +261,18 @@ for count_trials = 1:length(trials(:,1))
     % assign tgt loc and onset time
     tgt_loc = trials(count_trials, 3);
     tgt_flag = tgt_loc; %%%% where is the target
+    door_select_count = 0; % track how many they got it in
     
-    % set colours according to condition
-    edge_col = [255, 0, 0]; % KG: MFORAGE: this will vary by stage
-    col = world_colours(1, :, trials(count_trials, 2)); % KG: MFORAGE: this will change to be 1 colour
-    doors_closed_cols = repmat(world_colours(2, :, trials(count_trials, 2))', 1, nDoors); % KG: MFORAGE: this will change to be 1 colour
-    door_open_col = world_colours(3, :, trials(count_trials, 2)); % KG: MFORAGE: this will change to be 1 colour
-    
+    % set context colours according to condition
+    edge_col = context_cols(trials(count_trials, 2), :); % KG: select whether it is context 1 or 2
+    if stage == 3 && experiment == 1 && count_trials > 1 % only give a context cue if there is a task switch
+        if trials(count_trials-1,2) == trials(count_trials,2)
+            edge_col = [96 96 96];
+        else 
+            edge_col = edge_col;
+        end
+    end
+           
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%% run trial
     tgt_found = 0;
@@ -243,7 +293,7 @@ for count_trials = 1:length(trials(:,1))
                                                                 edgeRect, backRect,  xCenter, ...
                                                                 yCenter, edge_col, col, doorRects, ...
                                                                 beh_fid, beh_form, ...
-                                                                sub.num, sub.sess,...
+                                                                sub.num, sub.stage,...
                                                                 count_trials, trials(count_trials,2), ...
                                                                 tgt_flag, ...
                                                                 xPos, yPos, ...
@@ -251,6 +301,8 @@ for count_trials = 1:length(trials(:,1))
                                                                 button_idx, time.context_cue_on);
 
         end
+
+        door_select_count = door_select_count + 1;
         
         % door has been selected, so open it
         while any(door_on_flag) 
@@ -260,7 +312,7 @@ for count_trials = 1:length(trials(:,1))
            % door
             
             % didx & tgt_flag info are getting here
-            [tgt_found, didx, door_on_flag] = query_open_door(trial_start, sub.num, sub.sess, ...
+            [tgt_found, didx, door_on_flag] = query_open_door(trial_start, sub.num, sub.stage, ...
                                                               count_trials, trials(count_trials,2), ...
                                                               door_ps(trials(count_trials,2), :), ...
                                                               tgt_flag, window, ...
@@ -268,30 +320,41 @@ for count_trials = 1:length(trials(:,1))
                                                               doorRects, doors_closed_cols, ...
                                                               door_open_col,...
                                                               didx, beh_fid, beh_form, x, y, button_idx, time.context_cue_on);
-           
+
         end
-    end
+    end % end of trial
     
-    % KG: MFORAGE: target is shown for as long as the button is pushed down
-    % for
-    draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
-        doorRects, doors_closed_cols, didx, ...
-        trials(count_trials,5), xCenter, yCenter, time.context_cue_on, ...
-        trial_start);
+    % KG: MFORAGE: this feedback code may move dependening on other learning stages
+    if stage < 3
+        feedback_on = 1;
+    else 
+        feedback_on = 0;
+    end
+
+    points = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
+                        doorRects, doors_closed_cols, didx, ...
+                        trials(count_trials,5), xCenter, yCenter, time.context_cue_on, ...
+                        trial_start, door_select_count, feedback_on, ...
+                        screenYpixels);
         [~,~,buttons] = GetMouse(window);
     while buttons(button_idx)
         [~,~,buttons] = GetMouse(window);
     end
-    WaitSecs(0.5); % just create a small gap between target offset and onset 
+    if stage == 3 && experiment == 1
+    else
+        WaitSecs(0.5); % just create a small gap between target offset and onset, but not on the proactive switching task 
+    end
     % of next door
-    
+    tpoints = tpoints + points;
+
+
+
     if count_trials == n_practice_trials
-        
+
         end_practice(window, screenYpixels);
         KbWait;
         WaitSecs(1);
     end
-    
     
     if any(mod(count_trials-n_practice_trials, breaks))
     else
@@ -302,6 +365,31 @@ for count_trials = 1:length(trials(:,1))
         end
         WaitSecs(1);
     end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% if in stage 1, tally up how many doors they got it in and see
+%%%%%%%%%%%% if you can switch them to the next phase
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if stage == 1
+    moves_record = [moves_record, door_select_count];
+    if count_trials > n_practice_trials + 10
+        go = tally_moves(moves_record, moves_goal, count_trials); % returns a true if we should proceed as normal
+
+        % if participant has met the accuracy criteria, then bump up their
+        % trial count so that they either move to the next context, or the last
+        % trials
+        if ~go && trials(count_trials,2) == trials(n_practice_trials+1,2)
+            %next_world_intructions; % this will be a function that tells p's they are changing worlds
+            trials(count_trials+1:...
+                count_trials+ntrials, 2:5) = ... % here I am just shifting the next context trials up to be next, as the person has passed this context
+                trials(ntrials+n_practice_trials+1:n_practice_trials+(ntrials*2),2:5);
+            switch_point = count_trials;
+        elseif ~go && count_trials > switch_point + 10
+            % now the person has gotten sufficient accuracy for context b
+            break
+        end
+    end
+end % end stage 1 response tally
     
 end
 

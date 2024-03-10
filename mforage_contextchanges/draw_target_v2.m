@@ -1,13 +1,15 @@
-function [] = draw_target_v2(window, edgeRect, backRect, edgeCol, backCol, ...
+function [points] = draw_target_v2(window, edgeRect, backRect, edgeCol, backCol, ...
     doorRects, doorCol,...
-    didx, image_num, xCenter, yCenter, context_on, trial_start)
+    didx, image_num, xCenter, yCenter, context_on, trial_start,...
+    door_select_count, feedback_on, screenYpixels)
 % this function draws the target to the selected door
 % backRect/backCol = features of background
 % doorRects/doorCol = door features
 % didx = id of the door where the tgt is
 % image_num - a string of either '01'-'09' or '10'+ for the specific target
 % found
-% time_on = duration of time for which the target should be left on
+% door_select_count = how many doors did they have to pick?
+% feedback_on = do you want to give points feedback?
 
 if image_num < 10
     if exist(sprintf('tgt0-100/tgt0%d.jpeg', image_num))
@@ -25,6 +27,26 @@ end
 
 im = imread(im_fname);
 tex = Screen('MakeTexture', window, im);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% now compute performance relative to target
+if feedback_on
+    goal = 5; % KG: MFORAGE: This is hardcoded!
+    if door_select_count >= goal
+        points = 0;
+    else
+        points = (goal - door_select_count) * 5;
+    end
+
+    Screen('TextStyle', window, 1);
+    Screen('TextSize', window, 40);
+    feedback = sprintf(['You got it in %d moves\n\n'...
+                            '%d points\n\n'], door_select_count, points);
+    DrawFormattedText(window, feedback,'Center', screenYpixels*.1, [255, 215, 0]);
+else 
+    points = 0;
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % draw doors with target
 draw_edge(window, edgeRect, xCenter, yCenter, edgeCol, trial_start, context_on);

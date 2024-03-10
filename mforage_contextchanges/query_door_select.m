@@ -58,17 +58,26 @@ while ~any(start_test)
             didx = 0;
             curr_door_prob = 0;
         else
-            door_on_flag = 1;
+            tmp_flag = 1;
         end
-    else % if a button hasn't been pressed then the door idx should be 0
-        didx = 0;
-        door_on_flag = 0;
+    else % if a button hasn't been pressed then check if hovering on a door
+        door_check = doorSample(xPos, yPos, x, y); % returns distance of
+        % mouse coordinates from all door centres
+        didx = find(door_check < r); % which door has been selected
+        if ~any(didx)
+            didx = 0;
+            tmp_flag = 0;
+        else
+            tmp_flag = 9;
+        end
         curr_door_prob = 0;
     end
    
     % collect the data from this sample
-    fprintf(fid, fform, sub, sess, trial_n, cond, timer, door_on_flag, didx, curr_door_prob, tgt_flag, 0, x, y); % KG: MFORAGE: I HAVE ADJUSTED THIS FORMAT (BEH_FORM), NEED TO MATCH AGAINSTS SPECS
-        
+    fprintf(fid, fform, sub, sess, trial_n, cond, timer, tmp_flag, didx, curr_door_prob, tgt_flag, 0, x, y); % KG: MFORAGE: I HAVE ADJUSTED THIS FORMAT (BEH_FORM), NEED TO MATCH AGAINSTS SPECS
+    if tmp_flag == 1
+        door_on_flag = 1;
+    end
     if door_on_flag % the participant has selected a door, so we can leave
         start_test   = 1;
     end

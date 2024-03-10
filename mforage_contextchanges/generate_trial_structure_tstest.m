@@ -1,11 +1,8 @@
-function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs)
+function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_config, door_probs, p)
 %%%%%
-% GENERATE_TRIAL_STRUCTURE_LEARN
-% generate the trial structure for the initial learning stage
-% which is essentially equivalent to generating 200 trials for each context
-% if the person hasn't got it in that time, then we assume they can't do
-% the experiment
-%
+% GENERATE_TRIAL_STRUCTURE_TRAIN
+% generate the trial structure for the task switching stage
+% multi-switch group == switch contexts with switch p of p 
 %
 % inputs - ntrials = number of trials in each condition 
 % sub_config [1, n] = subject counterbalancing info loaded from
@@ -32,7 +29,7 @@ trial_struct = zeros(tntrials, 4);
 
 trial_struct(:,1) = 1:length(trial_struct(:,1)); % allocate trial number
 
-% define whether context 1 or context 2 comes first - wayoooo
+% set up single switch as in learning stage
 [ttrials, ~] = size(trial_struct);
 trial_struct(1:(ttrials/2),2) = sub_config(3);
 trial_struct((ttrials/2)+1:ttrials,2) = 3 - sub_config(3);
@@ -40,11 +37,11 @@ trial_struct((ttrials/2)+1:ttrials,2) = 3 - sub_config(3);
 %%%%% consider making this a function
 % now get the location/prob configuration for this session
 % note that this is hard-coded!!!
-x_mat = zeros(4,4); % this is context 1
+x_mat = zeros(4,4);
 a = x_mat;
 a([6,7,9,16])=1;
 b=x_mat;
-b([3,5,11,13])=1; % this is context 2
+b([3,5,11,13])=1;
 % c=x_mat;
 % c([2,8,12,14])=1;
 % d=x_mat;
@@ -55,7 +52,7 @@ bases = cat(3, a,b);
 % to the target doors
 loc_config = bases;
 ca_ps = zeros(1,ndoors);
-ca_ps(find(loc_config(:,:,sub_config(3)))) = door_probs(door_probs > 0); %sub_config(3) determines what configuration gets assigned as someone's A vs their B
+ca_ps(find(loc_config(:,:,sub_config(3)))) = door_probs(door_probs > 0);
 cb_ps = zeros(1,ndoors);
 cb_ps(find(loc_config(:,:,3-sub_config(3)))) = door_probs(door_probs > 0);
 %%%%% end make function
@@ -65,8 +62,8 @@ ca_locs = get_locs_given_probs_v2(ntrials, ca_ps);
 cb_locs = get_locs_given_probs_v2(ntrials, cb_ps);
 
 % allocate to trial structure 
-trial_struct(1:ntrials, 2) = sub_config(4); % sub_config(4) determines if someone gets a first or b first
-trial_struct(ntrials+1:tntrials, 2) = 3 - sub_config(4); 
+trial_struct(1:ntrials, 2) = sub_config(5); % which context presented first?
+trial_struct(ntrials+1:tntrials, 2) = 3 - sub_config(5); 
 
 % allocate a target door to each trial
 trial_struct(trial_struct(:,2) == 1, 3) = ca_locs;
@@ -78,5 +75,10 @@ trial_struct(trial_struct(:,2) == 2, 4) = max(cb_ps);
 trial_struct(:,5) = 0;
 trial_struct(trial_struct(:,2) == 1, 5) = randi(ntargets, 1, ntrials);
 trial_struct(trial_struct(:,2) == 2, 5) = randi(ntargets, 1, ntrials);
+
+
+    
+trial_struct = create_switch_conditions(trial_struct, ntrials, p, sub_config(6));
+
 
 end

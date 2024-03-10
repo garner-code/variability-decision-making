@@ -1,15 +1,16 @@
 # Notes on counterbalancing for the doors task
 
-## Door locations for the 1st two phases
-- which ones shall we use?  
-- will go into loc_configs.mat
-- counterbalancing: 2 (context colours) x 2 (location sets) x  2 (order of learning, init) x 2 (order of learning - clear boundaries) x 2 (order of tarnsfer)
-- what are the instructions going to be?
+## Pre-run through notes:
+- We need a list of all the different counterbalancing options
 
-## Mouse decisions
-- collect x, y, mouse, and door select for each sample
-- at the end, filter the door selections as summary data
-- 
+## Instructions
+- what are the instructions going to be? (do we need to find appropriate targets?)
+- do we need them between context switches in learn and learning transfer stages?
 
-# Data
-- beh_form has changed - need to update
+## Things to double/triple check
+- That for all the counterbalancing types, the mapping of colour to target doors is consistent!!!!
+- What should we do for counterbalancing the hybrid transfer locations?
+- What do you think to no-waity target during the task-switching phase?
+- What do we think of p=.6/.4 for task switching and p=.7/.3 for training?
+
+

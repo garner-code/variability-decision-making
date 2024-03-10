@@ -1,4 +1,4 @@
-function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs)
+function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_lttest(ntrials, sub_config, door_probs)
 %%%%%
 % GENERATE_TRIAL_STRUCTURE_LEARN
 % generate the trial structure for the initial learning stage
@@ -41,14 +41,14 @@ trial_struct((ttrials/2)+1:ttrials,2) = 3 - sub_config(3);
 % now get the location/prob configuration for this session
 % note that this is hard-coded!!!
 x_mat = zeros(4,4); % this is context 1
-a = x_mat;
-a([6,7,9,16])=1;
+% a = x_mat;
+% a([6,7,9,16])=1;
+% b=x_mat;
+% b([3,5,11,13])=1; % this is context 2
+a=x_mat;
+a([6,7,9,16])=1; % complete transfer
 b=x_mat;
-b([3,5,11,13])=1; % this is context 2
-% c=x_mat;
-% c([2,8,12,14])=1;
-% d=x_mat;
-% d([1,4,10,15])=1;
+b([6,5,11,16])=1; % hybrid, for now - 
 bases = cat(3, a,b);
 
 % create a vector that corresponds to which probability has been assigned
@@ -65,8 +65,8 @@ ca_locs = get_locs_given_probs_v2(ntrials, ca_ps);
 cb_locs = get_locs_given_probs_v2(ntrials, cb_ps);
 
 % allocate to trial structure 
-trial_struct(1:ntrials, 2) = sub_config(4); % sub_config(4) determines if someone gets a first or b first
-trial_struct(ntrials+1:tntrials, 2) = 3 - sub_config(4); 
+trial_struct(1:ntrials, 2) = sub_config(6); % sub_config(4) determines if someone gets a first or b first
+trial_struct(ntrials+1:tntrials, 2) = 3 - sub_config(6); 
 
 % allocate a target door to each trial
 trial_struct(trial_struct(:,2) == 1, 3) = ca_locs;

@@ -18,4 +18,7 @@
 - 2nd more sensitive dv - duration spent on (and pressed) doors from irrelevant context after context cue.
 - Should mixed transfer be 3 from 1, and either 1 from the other or 1 random?
 
+## Extra
+- routine/strategy differences between contexts? (count 1, 2, 3, 4 vs go back to beginning) 
+
 

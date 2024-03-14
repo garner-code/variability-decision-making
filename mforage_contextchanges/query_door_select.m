@@ -31,7 +31,7 @@ Screen('DrawingFinished', window);
 vbl = Screen('Flip', window);
 
 while ~any(start_test)
-
+    tmp_flag = 0;
     draw_edge(window, edgeRect, xCenter, yCenter, edgeCol, trialStart, context_on);
     draw_background(window, backRect, xCenter, yCenter, backCol);
     draw_doors(window, doorRects, tmp_door_cols);

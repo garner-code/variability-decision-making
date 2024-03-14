@@ -7,6 +7,7 @@
 ## Instructions
 - what are the instructions going to be? (do we need to find appropriate targets?)
 - do we need them between context switches in learn and learning transfer stages?
+- feedback on longer/different?
 
 ## Things to double/triple check
 - That for all the counterbalancing types, the mapping of colour to target doors is consistent!!!!

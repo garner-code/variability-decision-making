@@ -1,4 +1,4 @@
-function [trial_struct] = create_switch_conditions(trial_struct, ntrials, p, cfig_val)
+function [trial_struct] = create_switch_conditions(trial_struct, ntrials, p)
     % CREATE SWITCH CONDITIONS
     % cfig_val - tells you whether to start with As or Bs
     % uses this solution to generate state switches
@@ -17,11 +17,7 @@ function [trial_struct] = create_switch_conditions(trial_struct, ntrials, p, cfi
 
     context_order = [];
     for icontext = 1:length(ca_runs)
-        if cfig_val == 1
-            context_order = [context_order, ones(1,ca_runs(icontext)), ones(1,cb_runs(icontext))*2];
-        else
-            context_order = [context_order, ones(1,cb_runs(icontext)), ones(1,ca_runs(icontext))*2];
-        end
+        context_order = [context_order, ones(1,ca_runs(icontext)), ones(1,cb_runs(icontext))*2];
     end
 
     tmp_trial_struct = zeros(size(trial_struct));

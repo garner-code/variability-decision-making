@@ -6,12 +6,9 @@ function [] = draw_edge(w, rect, xCenter, yCenter, col, trialStart, context_on)
     % col = the colour of the rectangle (rgb) when context cue is on
     % trialStart = when did the trial start?
     % context_on = how long should the cue be on for?
-    ifi = Screen('GetFlipInterval', w);
-    if ((GetSecs - trialStart)/ifi) <= context_on
-        this_col = col;
-    else
-        this_col = [96 96 96];
-    end
+    trialStart = trialStart; % legacy issues
+    context_on = context_on; % legacy issues
+    this_col = col;
     centeredRect = CenterRectOnPointd(rect, xCenter, yCenter);
     Screen('FrameRect', w, this_col, centeredRect, 20);   
 end

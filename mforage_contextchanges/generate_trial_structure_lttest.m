@@ -34,39 +34,25 @@ trial_struct(:,1) = 1:length(trial_struct(:,1)); % allocate trial number
 
 % define whether context 1 or context 2 comes first - wayoooo
 [ttrials, ~] = size(trial_struct);
-trial_struct(1:(ttrials/2),2) = sub_config(3);
-trial_struct((ttrials/2)+1:ttrials,2) = 3 - sub_config(3);
+trial_struct(1:(ttrials/2),2) = sub_config(24);
+trial_struct((ttrials/2)+1:ttrials,2) = 3 - sub_config(24);
 
-%%%%% consider making this a function
-% now get the location/prob configuration for this session
-% note that this is hard-coded!!!
-x_mat = zeros(4,4); % this is context 1
-% a = x_mat;
-% a([6,7,9,16])=1;
-% b=x_mat;
-% b([3,5,11,13])=1; % this is context 2
-a=x_mat;
-a([6,7,9,16])=1; % complete transfer
-b=x_mat;
-b([6,5,11,16])=1; % hybrid, for now - 
-bases = cat(3, a,b);
+% get locations for this stage % WARNING - HARD CODED
+ca_idxs = sub_config(11:14); 
+cb_idxs = sub_config(15:18);
+
 
 % create a vector that corresponds to which probability has been assigned
 % to the target doors
-loc_config = bases;
 ca_ps = zeros(1,ndoors);
-ca_ps(find(loc_config(:,:,sub_config(3)))) = door_probs(door_probs > 0); %sub_config(3) determines what configuration gets assigned as someone's A vs their B
+ca_ps(ca_idxs) = door_probs(door_probs > 0); %sub_config(3) determines what configuration gets assigned as someone's A vs their B
 cb_ps = zeros(1,ndoors);
-cb_ps(find(loc_config(:,:,3-sub_config(3)))) = door_probs(door_probs > 0);
+cb_ps(cb_idxs) = door_probs(door_probs > 0);
 %%%%% end make function
 
 % now generate the tgt locs for each trial in each context
 ca_locs = get_locs_given_probs_v2(ntrials, ca_ps);
 cb_locs = get_locs_given_probs_v2(ntrials, cb_ps);
-
-% allocate to trial structure 
-trial_struct(1:ntrials, 2) = sub_config(6); % sub_config(4) determines if someone gets a first or b first
-trial_struct(ntrials+1:tntrials, 2) = 3 - sub_config(6); 
 
 % allocate a target door to each trial
 trial_struct(trial_struct(:,2) == 1, 3) = ca_locs;

@@ -31,39 +31,24 @@ trial_struct(:,1) = 1:length(trial_struct(:,1)); % allocate trial number
 
 % set up single switch as in learning stage
 [ttrials, ~] = size(trial_struct);
-trial_struct(1:(ttrials/2),2) = sub_config(3);
-trial_struct((ttrials/2)+1:ttrials,2) = 3 - sub_config(3);
+trial_struct(1:(ttrials/2),2) = sub_config(23);
+trial_struct((ttrials/2)+1:ttrials,2) = 3 - sub_config(23);
 
-%%%%% consider making this a function
-% now get the location/prob configuration for this session
-% note that this is hard-coded!!!
-x_mat = zeros(4,4);
-a = x_mat;
-a([6,7,9,16])=1;
-b=x_mat;
-b([3,5,11,13])=1;
-% c=x_mat;
-% c([2,8,12,14])=1;
-% d=x_mat;
-% d([1,4,10,15])=1;
-bases = cat(3, a,b);
+% get locations for this stage % WARNING - HARD CODED
+ca_idxs = sub_config(3:6); 
+cb_idxs = sub_config(7:10);
 
 % create a vector that corresponds to which probability has been assigned
 % to the target doors
-loc_config = bases;
+% get target locations for each context
 ca_ps = zeros(1,ndoors);
-ca_ps(find(loc_config(:,:,sub_config(3)))) = door_probs(door_probs > 0);
+ca_ps(ca_idxs) = door_probs(door_probs > 0);
 cb_ps = zeros(1,ndoors);
-cb_ps(find(loc_config(:,:,3-sub_config(3)))) = door_probs(door_probs > 0);
-%%%%% end make function
+cb_ps(cb_idxs) = door_probs(door_probs > 0);
 
 % now generate the tgt locs for each trial in each context
 ca_locs = get_locs_given_probs_v2(ntrials, ca_ps);
 cb_locs = get_locs_given_probs_v2(ntrials, cb_ps);
-
-% allocate to trial structure 
-trial_struct(1:ntrials, 2) = sub_config(5); % which context presented first?
-trial_struct(ntrials+1:tntrials, 2) = 3 - sub_config(5); 
 
 % allocate a target door to each trial
 trial_struct(trial_struct(:,2) == 1, 3) = ca_locs;
@@ -77,8 +62,6 @@ trial_struct(trial_struct(:,2) == 1, 5) = randi(ntargets, 1, ntrials);
 trial_struct(trial_struct(:,2) == 2, 5) = randi(ntargets, 1, ntrials);
 
 
-    
-trial_struct = create_switch_conditions(trial_struct, ntrials, p, sub_config(6));
-
+trial_struct = create_switch_conditions(trial_struct, ntrials, p);
 
 end

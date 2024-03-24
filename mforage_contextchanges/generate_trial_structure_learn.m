@@ -27,46 +27,26 @@ function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_learn(ntrials, 
 ndoors = length(door_probs);
 ntargets = 100; % total number of targets to choose from
 tntrials = ntrials*2;% this assumes only 2 contexts, the
+
+% get locations for this stage % WARNING - HARD CODED
+ca_idxs = sub_config(3:6); 
+cb_idxs = sub_config(7:10);
+
 % hardcoded 2 would need to change for experiments involving more than 2.
 trial_struct = zeros(tntrials, 4); 
-
 trial_struct(:,1) = 1:length(trial_struct(:,1)); % allocate trial number
-
-% define whether context 1 or context 2 comes first - wayoooo
 [ttrials, ~] = size(trial_struct);
-trial_struct(1:(ttrials/2),2) = sub_config(3);
-trial_struct((ttrials/2)+1:ttrials,2) = 3 - sub_config(3);
+trial_struct(1:(ttrials/2),2) = 1;
+trial_struct((ttrials/2)+1:ttrials,2) = 2;
 
-%%%%% consider making this a function
-% now get the location/prob configuration for this session
-% note that this is hard-coded!!!
-x_mat = zeros(4,4); % this is context 1
-a = x_mat;
-a([6,7,9,16])=1;
-b=x_mat;
-b([3,5,11,13])=1; % this is context 2
-% c=x_mat;
-% c([2,8,12,14])=1;
-% d=x_mat;
-% d([1,4,10,15])=1;
-bases = cat(3, a,b);
-
-% create a vector that corresponds to which probability has been assigned
-% to the target doors
-loc_config = bases;
+% get target locations for each context
 ca_ps = zeros(1,ndoors);
-ca_ps(find(loc_config(:,:,sub_config(3)))) = door_probs(door_probs > 0); %sub_config(3) determines what configuration gets assigned as someone's A vs their B
+ca_ps(ca_idxs) = door_probs(door_probs > 0);
 cb_ps = zeros(1,ndoors);
-cb_ps(find(loc_config(:,:,3-sub_config(3)))) = door_probs(door_probs > 0);
-%%%%% end make function
-
+cb_ps(cb_idxs) = door_probs(door_probs > 0);
 % now generate the tgt locs for each trial in each context
 ca_locs = get_locs_given_probs_v2(ntrials, ca_ps);
 cb_locs = get_locs_given_probs_v2(ntrials, cb_ps);
-
-% allocate to trial structure 
-trial_struct(1:ntrials, 2) = sub_config(4); % sub_config(4) determines if someone gets a first or b first
-trial_struct(ntrials+1:tntrials, 2) = 3 - sub_config(4); 
 
 % allocate a target door to each trial
 trial_struct(trial_struct(:,2) == 1, 3) = ca_locs;

@@ -39,10 +39,10 @@ if feedback_on
     end
 
     Screen('TextStyle', window, 1);
-    Screen('TextSize', window, 40);
+    Screen('TextSize', window, 60);
     feedback = sprintf(['You got it in %d moves\n\n'...
                             '%d points\n\n'], door_select_count, points);
-    DrawFormattedText(window, feedback,'Center', screenYpixels*.1, [255, 215, 0]);
+    DrawFormattedText(window, feedback,'Center', screenYpixels*.15, [255, 215, 0]);
 else 
     points = 0;
 end

@@ -70,13 +70,8 @@ randstate = rand('state');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 load('sub_infos.mat'); % matrix of counterbalancing info
 % KG: MFORAGE: PUT NOTES HERE RE DEFINITION
-% sub_infos is an nsubs x by X column matrix with the following:
-% col 1 = subject number
-% col 2 = training group (1 = single switch, 2 = multi-switch)
-% col 3 = colour context map
-% col 4 = which context learned first
-% col 5 = which context goes first in train
-% col 6 = complete vs partial transfer 1st
+% see generate_sub_info_mat for details
+sub_config = sub_infos(sub.num, :);
 
 [beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code); % this is the behaviour and the events log
 
@@ -89,21 +84,27 @@ clear probs_cert_world
 if stage == 1 % if its initial learning
     n_practice_trials = 5;
     ntrials = 200; % KG: MFORAGE - a max I put for now but we might want to reduce this
-    [trials, ca_ps, cb_ps] = generate_trial_structure_learn(ntrials, sub_infos(sub.num,:), door_probs);
+    [trials, ca_ps, cb_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs);
 elseif stage == 2
     n_practice_trials = 0;
-    ntrials = 4*40; % must have whole integers for p=.7/.3
-    switch_prob = .3;
-    [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_infos(sub.num,:), door_probs, switch_prob);
+    ntrials = 4*40; % must have whole integers for p=.7/.3 or .95/.05
+
+    if sub_config(2) == 1
+        switch_prob = .05;
+    elseif sub_config(2) == 2
+        switch_prob = .3;
+    end
+    [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
+
 elseif stage == 3
     n_practice_trials = 0;
     if experiment == 1
         ntrials = 4*20;
-        switch_prob = .4;
-        [trials, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_infos(sub.num,:), door_probs, switch_prob);
+        switch_prob = .5;
+        [trials, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_config, door_probs, switch_prob);
     elseif experiment == 2
         ntrials = 4*10;
-        [trials, ca_ps, cb_ps] = generate_trial_structure_lttest(ntrials, sub_infos(sub.num,:), door_probs);
+        [trials, ca_ps, cb_ps] = generate_trial_structure_lttest(ntrials, sub_config, door_probs);
     end
 end
 
@@ -122,7 +123,7 @@ if stage == 1
 end
 
 write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
-    door_probs, sub_infos(sub.num,:), door_ps, sub_dir);
+    door_probs, sub_config, door_ps, sub_dir);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
@@ -132,32 +133,39 @@ write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Notes - changes = defining one set of greys for all door displays
 % Context cue goes around the edge and will need something defined
+
+% first put the colours in order of the counterbalancing
 green = [27, 158, 119]; % context X
 orange = [217, 95, 2]; % context Y
-base_context_learn = [green; orange];
 purple = [117, 112, 179]; % transfer A
 pink = [189, 41, 138]; % transfer B
-transfer_context_learn = [purple; pink];
+colour_options = {green, orange, purple, pink};
+
+base_context_learn = [colour_options{sub_config(19)}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
+                      colour_options{sub_config(20)}];
+transfer_context_learn = [colour_options{sub_config(21)}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
+                          colour_options{sub_config(22)}];
+
 hole = [20, 20, 20];
 col   = [160 160 160]; % set up the colours of the doors
 doors_closed_cols = repmat([96, 96, 96]', 1, ndoors); 
 door_open_col = hole;
 
 if stage == 1
-    context_cols =  [base_context_learn(1, :); ... % we counterbalance which config is assigned to A, and which is assigned to B,
-                     base_context_learn(2, :); % so we hold the colours constant, which will result in counterbalancing
+    context_cols =  [base_context_learn(1, :); ... % colours are randomly assigned
+                     base_context_learn(2, :); % 
                      [0, 0, 0]]; % finish with practice context cols
 elseif stage == 2
     context_cols = [col; col; col];
 elseif stage == 3
     if experiment == 1
-       context_cols =  [base_context_learn(1, :); ... % we counterbalance which config is assigned to A, and which is assigned to B,
+       context_cols =  [base_context_learn(1, :); ... 
                         base_context_learn(2, :);
                         col]; % for when there is no trial switch
 
     elseif experiment == 2
-    context_cols =  [transfer_context_learn(1, :); ... % we counterbalance which config is assigned to A, and which is assigned to B,
-                     transfer_context_learn(2, :); % so we hold the colours constant, which will result in counterbalancing
+    context_cols =  [transfer_context_learn(1, :); ... % randomised assignment
+                     transfer_context_learn(2, :); % rando assignment
                      [0, 0, 0]]; % finish with practice context cols
 
     end
@@ -220,18 +228,7 @@ r = doorPix/2; % radius is the distance from center to the edge of the door
 % presses, not much needs to be defined here
 time.ifi = Screen('GetFlipInterval', window);
 time.frames_per_sec = round(1/time.ifi);
-
-if stage == 1
-    time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
-elseif stage == 2
-    time.context_cue_on = round(1000/time.ifi); % same as above but we'll only be using the grey colour
-elseif stage == 3
-    if experiment == 1
-        time.context_cue_on = round(.75/time.ifi);
-    elseif experiment == 2
-        time.context_cue_on = round(1000/time.ifi); 
-    end
-end
+time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%% now we're ready to run through the experiment
@@ -265,13 +262,6 @@ for count_trials = 1:length(trials(:,1))
     
     % set context colours according to condition
     edge_col = context_cols(trials(count_trials, 2), :); % KG: select whether it is context 1 or 2
-    if stage == 3 && experiment == 1 && count_trials > 1 % only give a context cue if there is a task switch
-        if trials(count_trials-1,2) == trials(count_trials,2)
-            edge_col = [96 96 96];
-        else 
-            edge_col = edge_col;
-        end
-    end
            
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%% run trial
@@ -342,7 +332,7 @@ for count_trials = 1:length(trials(:,1))
     end
     if stage == 3 && experiment == 1
     else
-        WaitSecs(0.5); % just create a small gap between target offset and onset, but not on the proactive switching task 
+        WaitSecs(0.75); % just create a small gap between target offset and onset, but not on the proactive switching task 
     end
     % of next door
     tpoints = tpoints + points;
@@ -371,9 +361,10 @@ for count_trials = 1:length(trials(:,1))
 %%%%%%%%%%%% if you can switch them to the next phase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if stage == 1
+    n_correct_required = 20;
     moves_record = [moves_record, door_select_count];
-    if count_trials > n_practice_trials + 10
-        go = tally_moves(moves_record, moves_goal, count_trials); % returns a true if we should proceed as normal
+    if count_trials > n_practice_trials + n_correct_required
+        go = tally_moves(moves_record, moves_goal, count_trials, n_correct_required); % returns a true if we should proceed as normal
 
         % if participant has met the accuracy criteria, then bump up their
         % trial count so that they either move to the next context, or the last
@@ -384,7 +375,7 @@ if stage == 1
                 count_trials+ntrials, 2:5) = ... % here I am just shifting the next context trials up to be next, as the person has passed this context
                 trials(ntrials+n_practice_trials+1:n_practice_trials+(ntrials*2),2:5);
             switch_point = count_trials;
-        elseif ~go && count_trials > switch_point + 10
+        elseif ~go && count_trials > switch_point + n_correct_required
             % now the person has gotten sufficient accuracy for context b
             break
         end

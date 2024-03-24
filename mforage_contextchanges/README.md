@@ -17,5 +17,6 @@
 - need to sort shade out for no press period
 - add instructions/images etc
 - code to fully sanity check tranfer learning counterbalancing
+- final selection screens for learning stage
 
 

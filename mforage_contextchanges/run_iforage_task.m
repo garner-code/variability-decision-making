@@ -188,7 +188,7 @@ KbName('UnifyKeyNames');
 GetSecs;
 AssertOpenGL
 Screen('Preference', 'SkipSyncTests', 1);
-%PsychDebugWindowConfiguration;
+PsychDebugWindowConfiguration;
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
 screens = Screen('Screens');
@@ -229,6 +229,21 @@ r = doorPix/2; % radius is the distance from center to the edge of the door
 time.ifi = Screen('GetFlipInterval', window);
 time.frames_per_sec = round(1/time.ifi);
 time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% setting up sound for feedback
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% coin sound
+coin = 'coin-drop-39914.mp3';
+[sound, freq] = audioread(coin);
+
+% open audio device for playback
+coin_handle = PsychPortAudio('Open', 6, [], 0, freq, size(sound, 2));
+% fill the audio playback buffer with the sound
+PsychPortAudio('FillBuffer', coin_handle, sound');
+% Playback once at start
+PsychPortAudio('Start', coin_handle, 1, 0, 1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%% now we're ready to run through the experiment
@@ -321,23 +336,24 @@ for count_trials = 1:length(trials(:,1))
         feedback_on = 0;
     end
 
-    points = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
+    [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
                         doorRects, doors_closed_cols, didx, ...
                         trials(count_trials,5), xCenter, yCenter, time.context_cue_on, ...
                         trial_start, door_select_count, feedback_on, ...
-                        screenYpixels);
+                        screenYpixels, coin_handle);
         [~,~,buttons] = GetMouse(window);
     while buttons(button_idx)
         [~,~,buttons] = GetMouse(window);
     end
     if stage == 3 && experiment == 1
     else
-        WaitSecs(0.75); % just create a small gap between target offset and onset, but not on the proactive switching task 
+       wait_on = GetSecs;
+       WaitSecs(0.5-(wait_on - tgt_on)); % just create a small gap between target offset and onset, but not on the proactive switching task 
+        % stop sound
+        %PsychPortAudio('Stop', coin_handle, 1);
     end
     % of next door
     tpoints = tpoints + points;
-
-
 
     if count_trials == n_practice_trials
 

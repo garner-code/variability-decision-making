@@ -1,7 +1,8 @@
-function [points] = draw_target_v2(window, edgeRect, backRect, edgeCol, backCol, ...
+function [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edgeCol, backCol, ...
     doorRects, doorCol,...
     didx, image_num, xCenter, yCenter, context_on, trial_start,...
-    door_select_count, feedback_on, screenYpixels)
+    door_select_count, feedback_on, screenYpixels, ...
+    coin_handle)
 % this function draws the target to the selected door
 % backRect/backCol = features of background
 % doorRects/doorCol = door features
@@ -10,6 +11,8 @@ function [points] = draw_target_v2(window, edgeRect, backRect, edgeCol, backCol,
 % found
 % door_select_count = how many doors did they have to pick?
 % feedback_on = do you want to give points feedback?
+% ScreenYPixels - number of pixels along Y
+% coin_handle - handle to audio feedback sound
 
 if image_num < 10
     if exist(sprintf('tgt0-100/tgt0%d.jpeg', image_num))
@@ -22,7 +25,7 @@ else
         im_fname = sprintf('tgt0-100/tgt%d.jpeg', image_num);
     else
         im_fname = sprintf('tgt0-100/tgt%d.jpg', image_num);
-    end   
+    end
 end
 
 im = imread(im_fname);
@@ -35,15 +38,15 @@ if feedback_on
     if door_select_count >= goal
         points = 0;
     else
-        points = (goal - door_select_count) * 5;
+        points = goal - door_select_count;
     end
 
-    Screen('TextStyle', window, 1);
-    Screen('TextSize', window, 60);
-    feedback = sprintf(['You got it in %d moves\n\n'...
-                            '%d points\n\n'], door_select_count, points);
-    DrawFormattedText(window, feedback,'Center', screenYpixels*.15, [255, 215, 0]);
-else 
+    %     Screen('TextStyle', window, 1);
+    %     Screen('TextSize', window, 60);
+    %     feedback = sprintf(['You got it in %d moves\n\n'...
+    %                             '%d points\n\n'], door_select_count, points);
+    %     DrawFormattedText(window, feedback,'Center', screenYpixels*.15, [255, 215, 0]);
+else
     points = 0;
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -54,6 +57,14 @@ draw_background(window, backRect, xCenter, yCenter, backCol);
 draw_doors(window, doorRects, doorCol);
 im_rect = doorRects(:, didx);
 Screen('DrawTexture', window, tex, [], im_rect);
+% start sound and draw the target
+if points > 0
+    start = GetSecs;
+    PsychPortAudio('Start', coin_handle, 1, 0, 0);
+    stop = GetSecs;
+    stop - start
+end
 tgt.vbl = Screen('Flip', window);
+tgt_on = tgt.vbl;
 
 end

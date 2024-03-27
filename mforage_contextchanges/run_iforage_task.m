@@ -96,6 +96,10 @@ elseif stage == 2
     end
     [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
 
+    % now allocate 50 % of the switch trials to be reward available trials
+    reward_trials = find(~diff(trials(:,2)))+1;
+    reward_trials = datasample(reward_trials, round(length(reward_trials)/2), 'Replace',false);
+    reward_trials = sort(reward_trials, 'ascend');
 elseif stage == 3
     n_practice_trials = 0;
     if experiment == 1
@@ -235,15 +239,27 @@ time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % coin sound
-coin = 'coin-drop-39914.mp3';
-[sound, freq] = audioread(coin);
+win_sounds = dir('win');
+% remove hidden files
+hidden_index = [];
+for ihid = 1:length(win_sounds)
+    if length(win_sounds(ihid).name) < 5
+        hidden_index = [hidden_index, ihid];
+    end
+end
+win_sounds(hidden_index) = [];
+% now read in mp3 files
+coin_handles = cell(1, numel(length(win_sounds)));
+for imp3 = 1:length(win_sounds)
+    mp3fname = fullfile(win_sounds(imp3).folder, win_sounds(imp3).name);
+    [y, freq] = audioread(mp3fname);
+    coin_handles{imp3} = PsychPortAudio('Open', 6, [], 0, freq, size(y, 2)); % get handle
+    PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
+end
 
-% open audio device for playback
-coin_handle = PsychPortAudio('Open', 6, [], 0, freq, size(sound, 2));
-% fill the audio playback buffer with the sound
-PsychPortAudio('FillBuffer', coin_handle, sound');
+
 % Playback once at start
-PsychPortAudio('Start', coin_handle, 1, 0, 1);
+PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%% now we're ready to run through the experiment
@@ -262,8 +278,8 @@ tpoints = sub.tpoints;
 for count_trials = 1:length(trials(:,1))
 
  
-    if stage == 1 && count_trials == 1
-       run_instructions(window, screenYpixels);
+    if count_trials == 1
+        run_instructions(window, screenYpixels, stage, experiment);
         KbWait;
         WaitSecs(1); 
     end
@@ -331,7 +347,15 @@ for count_trials = 1:length(trials(:,1))
     
     % KG: MFORAGE: this feedback code may move dependening on other learning stages
     if stage < 3
-        feedback_on = 1;
+        if stage == 1
+            feedback_on = 1; % reward available on every trial
+        elseif stage == 2 && sum(reward_trials == count_trials)
+            % is this a reward trial (i.e. find if count_trials exists in
+            % reward_trials
+            feedback_on = 1;
+        else
+            feedback_on = 0;
+        end
     else 
         feedback_on = 0;
     end
@@ -340,7 +364,7 @@ for count_trials = 1:length(trials(:,1))
                         doorRects, doors_closed_cols, didx, ...
                         trials(count_trials,5), xCenter, yCenter, time.context_cue_on, ...
                         trial_start, door_select_count, feedback_on, ...
-                        screenYpixels, coin_handle);
+                        screenYpixels, coin_handles);
         [~,~,buttons] = GetMouse(window);
     while buttons(button_idx)
         [~,~,buttons] = GetMouse(window);
@@ -350,7 +374,6 @@ for count_trials = 1:length(trials(:,1))
        wait_on = GetSecs;
        WaitSecs(0.5-(wait_on - tgt_on)); % just create a small gap between target offset and onset, but not on the proactive switching task 
         % stop sound
-        %PsychPortAudio('Stop', coin_handle, 1);
     end
     % of next door
     tpoints = tpoints + points;
@@ -366,7 +389,8 @@ for count_trials = 1:length(trials(:,1))
     else
         if count_trials == n_practice_trials
         else
-            take_a_break(window, count_trials-n_practice_trials, ntrials*2, breaks, backRect, xCenter, yCenter, screenYpixels);
+            take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
+                breaks, backRect, xCenter, yCenter, screenYpixels, tpoints);
             KbWait;
         end
         WaitSecs(1);
@@ -377,7 +401,7 @@ for count_trials = 1:length(trials(:,1))
 %%%%%%%%%%%% if you can switch them to the next phase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if stage == 1
-    n_correct_required = 20;
+    n_correct_required = 20; 
     moves_record = [moves_record, door_select_count];
     if count_trials > n_practice_trials + n_correct_required
         go = tally_moves(moves_record, moves_goal, count_trials, n_correct_required); % returns a true if we should proceed as normal
@@ -386,21 +410,26 @@ if stage == 1
         % trial count so that they either move to the next context, or the last
         % trials
         if ~go && trials(count_trials,2) == trials(n_practice_trials+1,2)
-            %next_world_intructions; % this will be a function that tells p's they are changing worlds
             trials(count_trials+1:...
                 count_trials+ntrials, 2:5) = ... % here I am just shifting the next context trials up to be next, as the person has passed this context
                 trials(ntrials+n_practice_trials+1:n_practice_trials+(ntrials*2),2:5);
             switch_point = count_trials;
+            run_house_change(window, screenYpixels); % let participants know they are changing house
+            KbWait; WaitSecs(1);
         elseif ~go && count_trials > switch_point + n_correct_required
             % now the person has gotten sufficient accuracy for context b
             break
         end
     end
 end % end stage 1 response tally
+if stage == 3 && experiment == 2 && count_trials == 20
+    run_house_change(window, screenYpixels); % let participants know they are changing house
+end
     
 end
 
+PsychPortAudio('Close', coin_handles);
 sca;
 Priority(0);
 Screen('CloseAll');
-ShowCursor
+sprintf('total points = %d', points)

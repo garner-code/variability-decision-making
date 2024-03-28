@@ -31,8 +31,8 @@ for isub = 1:4:nsubs/2
     end
 
     % transfer counterbalancing (if happening)
-    sub_infos(isub:isub+1,23) = 1;
-    sub_infos(isub+2:isub+3,23) = 2;
+    sub_infos([isub,isub+2],23) = 1;
+    sub_infos([isub+1,isub+3],23) = 2;
     for icomp = isub:isub+3
         if sub_infos(icomp, 23) == 1
             sub_infos(icomp,11:14) = ca_idxs;

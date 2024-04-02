@@ -428,8 +428,8 @@ end
     
 end
 
-PsychPortAudio('Close', coin_handles);
+PsychPortAudio('Close');
 sca;
 Priority(0);
 Screen('CloseAll');
-sprintf('total points = %d', points)
+sprintf('total points = %d', tpoints)

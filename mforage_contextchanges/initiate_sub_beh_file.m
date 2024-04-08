@@ -8,6 +8,8 @@ elseif sess_n == 2
     ses_str = 'train';
 elseif sess_n == 3
     ses_str = 'test';
+elseif sess_n == 4
+    ses_str = 'learn-check';
 end
 
 if sub < 10

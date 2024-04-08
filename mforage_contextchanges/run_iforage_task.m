@@ -69,7 +69,6 @@ randstate = rand('state');
 %%%% generate trial structure for participants and setup log files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 load('sub_infos.mat'); % matrix of counterbalancing info
-% KG: MFORAGE: PUT NOTES HERE RE DEFINITION
 % see generate_sub_info_mat for details
 sub_config = sub_infos(sub.num, :);
 
@@ -83,7 +82,7 @@ clear probs_cert_world
 % KG: MFORAGE: will change the below
 if stage == 1 % if its initial learning
     n_practice_trials = 5;
-    ntrials = 200; % KG: MFORAGE - a max I put for now but we might want to reduce this
+    ntrials = 200; % KG: MFORAGE - max per context
     [trials, ca_ps, cb_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs);
 elseif stage == 2
     n_practice_trials = 0;
@@ -115,7 +114,6 @@ end
 door_ps = [ca_ps; cb_ps; repmat(1/16, 1, 16)]; % create a tt x door matrix for display referencing later
 ndoors = length(ca_ps);
 
-% KG: MFORAGE: keep the below but the details may change
 % add the 5 practice trials to the start of the matrix
 if stage == 1
     practice = [ repmat(999, n_practice_trials, 1), ...
@@ -139,10 +137,10 @@ write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
 % Context cue goes around the edge and will need something defined
 
 % first put the colours in order of the counterbalancing
-green = [27, 158, 119]; % context X
-orange = [217, 95, 2]; % context Y
-purple = [117, 112, 179]; % transfer A
-pink = [189, 41, 138]; % transfer B
+green = [27, 158, 119]; 
+orange = [217, 95, 2];
+purple = [117, 112, 179];
+pink = [189, 41, 138]; 
 colour_options = {green, orange, purple, pink};
 
 base_context_learn = [colour_options{sub_config(19)}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
@@ -192,7 +190,7 @@ KbName('UnifyKeyNames');
 GetSecs;
 AssertOpenGL
 Screen('Preference', 'SkipSyncTests', 1);
-PsychDebugWindowConfiguration;
+%PsychDebugWindowConfiguration;
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
 screens = Screen('Screens');
@@ -253,7 +251,7 @@ coin_handles = cell(1, numel(length(win_sounds)));
 for imp3 = 1:length(win_sounds)
     mp3fname = fullfile(win_sounds(imp3).folder, win_sounds(imp3).name);
     [y, freq] = audioread(mp3fname);
-    coin_handles{imp3} = PsychPortAudio('Open', 6, [], 0, freq, size(y, 2)); % get handle
+    coin_handles{imp3} = PsychPortAudio('Open', [], [], 0, freq, size(y, 2)); % get handle
     PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
 end
 
@@ -401,7 +399,8 @@ for count_trials = 1:length(trials(:,1))
 %%%%%%%%%%%% if you can switch them to the next phase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if stage == 1
-    n_correct_required = 20; 
+    n_correct_required = 40; % 40, to give a greater probability of each door type appearing a good 
+    % number of times
     moves_record = [moves_record, door_select_count];
     if count_trials > n_practice_trials + n_correct_required
         go = tally_moves(moves_record, moves_goal, count_trials, n_correct_required); % returns a true if we should proceed as normal
@@ -430,5 +429,6 @@ end
 
 sca;
 Priority(0);
+PsychPortAudio('Close');
 Screen('CloseAll');
 sprintf('total points = %d', tpoints)

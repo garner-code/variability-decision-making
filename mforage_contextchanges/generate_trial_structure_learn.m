@@ -26,7 +26,7 @@ function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_learn(ntrials, 
 
 ndoors = length(door_probs);
 ntargets = 100; % total number of targets to choose from
-tntrials = ntrials*2;% this assumes only 2 contexts, the
+tntrials = ntrials*2;% this assumes only 2 contexts
 
 % get locations for this stage % WARNING - HARD CODED
 ca_idxs = sub_config(3:6); 

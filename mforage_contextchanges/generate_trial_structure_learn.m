@@ -29,8 +29,8 @@ ntargets = 100; % total number of targets to choose from
 tntrials = ntrials*2;% this assumes only 2 contexts
 
 % get locations for this stage % WARNING - HARD CODED
-ca_idxs = sub_config(3:6); 
-cb_idxs = sub_config(7:10);
+ca_idxs = sub_config(3:6); % context A
+cb_idxs = sub_config(7:10); % context B
 
 % hardcoded 2 would need to change for experiments involving more than 2.
 trial_struct = zeros(tntrials, 4); 

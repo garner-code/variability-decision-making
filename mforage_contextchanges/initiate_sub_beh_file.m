@@ -1,5 +1,5 @@
 function [beh_form, beh_fid] = initiate_sub_beh_file(sub, sess_n, sub_dir, ...
-                                                      exp_code)
+                                                      exp_code, house)
 
 % settings
 if sess_n == 1
@@ -8,16 +8,24 @@ elseif sess_n == 2
     ses_str = 'train';
 elseif sess_n == 3
     ses_str = 'test';
-elseif sess_n == 4
-    ses_str = 'learn-check';
 end
 
-if sub < 10
-    fname   = sprintf('sub-0%d_ses-%s_task-mforage_beh.tsv', ...
-                                                    sub, ses_str);
-else 
-    fname   = sprintf('sub-%d_ses-%s_task-mforage_beh.tsv', ...
-                                                    sub, ses_str);  
+if sess_n == 1
+    if sub < 10
+        fname   = sprintf('sub-0%d_ses-%s_house-%d_task-mforage_beh.tsv', ...
+            sub, ses_str, house);
+    else
+        fname   = sprintf('sub-%d_ses-%s_house-%d_task-mforage_beh.tsv', ...
+            sub, ses_str, house);
+    end
+else
+    if sub < 10
+        fname   = sprintf('sub-0%d_ses-%s_task-mforage_beh.tsv', ...
+            sub, ses_str);
+    else
+        fname   = sprintf('sub-%d_ses-%s_task-mforage_beh.tsv', ...
+            sub, ses_str);
+    end
 end
 beh_fid = fopen( [sprintf('exp_%s', exp_code) '/' sub_dir, sprintf('/ses-%s', ses_str), '/beh/' fname], 'w');
         % here will print sub, trial num, cond num, timestamp (ms) + a 0 for

@@ -72,7 +72,14 @@ load('sub_infos.mat'); % matrix of counterbalancing info
 % see generate_sub_info_mat for details
 sub_config = sub_infos(sub.num, :);
 
-[beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code); % this is the behaviour and the events log
+if stage == 1
+    sub.house = input('house number? 1 or 2 ');
+    house = sub.house;
+else
+    house = 0; % not relevant because we are mixing up the houses, so set to zero
+end
+[beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code, house); % this is the behaviour and the events log
+
 
 % probabilities of target location and number of doors
 load('probs_cert_world_v2.mat'); % this specifies that there are 4 doors with p=0.25 each 
@@ -83,7 +90,7 @@ clear probs_cert_world
 if stage == 1 % if its initial learning
     n_practice_trials = 5;
     ntrials = 200; % KG: MFORAGE - max per context
-    [trials, ca_ps, cb_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs);
+    [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house);    
 elseif stage == 2
     n_practice_trials = 0;
     ntrials = 4*40; % must have whole integers for p=.7/.3 or .95/.05
@@ -107,15 +114,25 @@ elseif stage == 3
         [trials, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_config, door_probs, switch_prob);
     elseif experiment == 2
         ntrials = 4*10;
+        n_trials_per_transfer_type = ntrials;
         [trials, ca_ps, cb_ps] = generate_trial_structure_lttest(ntrials, sub_config, door_probs);
     end
 end
 
-door_ps = [ca_ps; cb_ps; repmat(1/16, 1, 16)]; % create a tt x door matrix for display referencing later
+if stage == 1
+    if house == 1
+        door_ps = [ca_ps; zeros(1, length(ca_ps)); repmat(1/length(ca_ps), 1, length(ca_ps))];
+    else
+        door_ps = [zeros(1, length(ca_ps)); ca_ps; repmat(1/length(ca_ps), 1, length(ca_ps))];
+    end
+else
+        door_ps = [ca_ps; cb_ps; repmat(1/length(ca_ps), 1, length(ca_ps))]; % create a tt x door matrix for display referencing later
+end
+
 ndoors = length(ca_ps);
 
 % add the 5 practice trials to the start of the matrix
-if stage == 1
+if stage == 1 && house == 1
     practice = [ repmat(999, n_practice_trials, 1), ...
         repmat(3, n_practice_trials, 1), ...
         datasample(1:16, n_practice_trials)', ...
@@ -125,7 +142,7 @@ if stage == 1
 end
 
 write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
-    door_probs, sub_config, door_ps, sub_dir);
+    door_probs, sub_config, door_ps, sub_dir, house);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
@@ -269,7 +286,6 @@ SetMouse(xCenter, yCenter, window);
 if stage == 1
     moves_record = [];
     moves_goal = 4;
-    switch_point = 0;
 end
 tpoints = sub.tpoints;
 
@@ -376,7 +392,7 @@ for count_trials = 1:length(trials(:,1))
     % of next door
     tpoints = tpoints + points;
 
-    if count_trials == n_practice_trials
+    if stage == 1 && house == 1 && count_trials == n_practice_trials
 
         end_practice(window, screenYpixels);
         KbWait;
@@ -402,26 +418,17 @@ if stage == 1
     n_correct_required = 40; % 40, to give a greater probability of each door type appearing a good 
     % number of times
     moves_record = [moves_record, door_select_count];
+
     if count_trials > n_practice_trials + n_correct_required
         go = tally_moves(moves_record, moves_goal, count_trials, n_correct_required); % returns a true if we should proceed as normal
-
-        % if participant has met the accuracy criteria, then bump up their
-        % trial count so that they either move to the next context, or the last
-        % trials
-        if ~go && trials(count_trials,2) == trials(n_practice_trials+1,2)
-            trials(count_trials+1:...
-                count_trials+ntrials, 2:5) = ... % here I am just shifting the next context trials up to be next, as the person has passed this context
-                trials(ntrials+n_practice_trials+1:n_practice_trials+(ntrials*2),2:5);
-            switch_point = count_trials;
-            run_house_change(window, screenYpixels); % let participants know they are changing house
-            KbWait; WaitSecs(1);
-        elseif ~go && count_trials > switch_point + n_correct_required
-            % now the person has gotten sufficient accuracy for context b
+        
+        if ~go
             break
         end
     end
 end % end stage 1 response tally
-if stage == 3 && experiment == 2 && count_trials == 20
+
+if stage == 3 && experiment == 2 && count_trials == n_trials_per_transfer_type
     run_house_change(window, screenYpixels); % let participants know they are changing house
 end
     
@@ -431,4 +438,10 @@ sca;
 Priority(0);
 PsychPortAudio('Close');
 Screen('CloseAll');
+
 sprintf('total points = %d', tpoints)
+if stage == 1 && ~go
+    sprintf('achievement unlocked! proceed to next level')
+elseif stage == 1 && count_trials == ntrials
+    sprintf('accuracy criterion wasn`t reached :(')
+end

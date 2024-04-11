@@ -293,7 +293,7 @@ for count_trials = 1:length(trials(:,1))
 
  
     if count_trials == 1
-        run_instructions(window, screenYpixels, stage, experiment);
+        run_instructions(window, screenYpixels, stage, experiment, house);
         KbWait;
         WaitSecs(1); 
     end

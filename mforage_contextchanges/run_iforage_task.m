@@ -73,7 +73,7 @@ load('sub_infos.mat'); % matrix of counterbalancing info
 sub_config = sub_infos(sub.num, :);
 
 if stage == 1
-    sub.house = input('house number? 1 or 2 ');
+    sub.house = input('house number? 1 or 2 or 9 '); % 1 for the first house, 2 for house 2, 9 to go through both
     house = sub.house;
 else
     house = 0; % not relevant because we are mixing up the houses, so set to zero
@@ -87,24 +87,33 @@ door_probs   = probs_cert_world;
 clear probs_cert_world 
 
 % KG: MFORAGE: will change the below
-if stage == 1 % if its initial learning
+if stage == 1 && house < 9% if its initial learning
     n_practice_trials = 5;
     ntrials = 200; % KG: MFORAGE - max per context
     [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house);    
+elseif stage == 1 && house == 9
+
+    n_practice_trials = 0;
+    ntrials = 40; % KG: MFORAGE - max per context
+    [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house); 
+
 elseif stage == 2
     n_practice_trials = 0;
     ntrials = 4*40; % must have whole integers for p=.7/.3 or .95/.05
-
+    lo_switch = .05;
+    hi_switch = .3;
     if sub_config(2) == 1
-        switch_prob = .05;
+        switch_prob = lo_switch;
     elseif sub_config(2) == 2
-        switch_prob = .3;
+        switch_prob = hi_switch;
     end
+    max_reward_trials = ntrials - (ntrials*hi_switch); % 
     [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
 
     % now allocate 50 % of the switch trials to be reward available trials
     reward_trials = find(~diff(trials(:,2)))+1;
-    reward_trials = datasample(reward_trials, round(length(reward_trials)/2), 'Replace',false);
+    n_reward_trials = min(max_reward_trials, round(length(reward_trials)/2));
+    reward_trials = datasample(reward_trials, n_reward_trials, 'Replace',false);
     reward_trials = sort(reward_trials, 'ascend');
 elseif stage == 3
     n_practice_trials = 0;
@@ -122,8 +131,10 @@ end
 if stage == 1
     if house == 1
         door_ps = [ca_ps; zeros(1, length(ca_ps)); repmat(1/length(ca_ps), 1, length(ca_ps))];
-    else
+    elseif house == 2
         door_ps = [zeros(1, length(ca_ps)); ca_ps; repmat(1/length(ca_ps), 1, length(ca_ps))];
+    else
+        door_ps = [ca_ps(1,:); ca_ps(2,:); repmat(1/length(ca_ps(1,:)), 1, length(ca_ps(1,:)))];
     end
 else
         door_ps = [ca_ps; cb_ps; repmat(1/length(ca_ps), 1, length(ca_ps))]; % create a tt x door matrix for display referencing later
@@ -268,7 +279,7 @@ coin_handles = cell(1, numel(length(win_sounds)));
 for imp3 = 1:length(win_sounds)
     mp3fname = fullfile(win_sounds(imp3).folder, win_sounds(imp3).name);
     [y, freq] = audioread(mp3fname);
-    coin_handles{imp3} = PsychPortAudio('Open', [], [], 0, freq, size(y, 2)); % get handle
+    coin_handles{imp3} = PsychPortAudio('Open', 6, [], 0, freq, size(y, 2)); % get handle
     PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
 end
 
@@ -283,7 +294,7 @@ PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
 SetMouse(xCenter, yCenter, window);
 
 % things to collect during the experiment
-if stage == 1
+if stage == 1 && house < 9
     moves_record = [];
     moves_goal = 4;
 end
@@ -361,8 +372,8 @@ for count_trials = 1:length(trials(:,1))
     
     % KG: MFORAGE: this feedback code may move dependening on other learning stages
     if stage < 3
-        if stage == 1
-            feedback_on = 1; % reward available on every trial
+        if stage == 1 
+            feedback_on = 1;
         elseif stage == 2 && sum(reward_trials == count_trials)
             % is this a reward trial (i.e. find if count_trials exists in
             % reward_trials
@@ -404,7 +415,8 @@ for count_trials = 1:length(trials(:,1))
         if count_trials == n_practice_trials
         else
             take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
-                breaks, backRect, xCenter, yCenter, screenYpixels, tpoints);
+                breaks, backRect, xCenter, yCenter, screenYpixels, tpoints, stage, ...
+                house);
             KbWait;
         end
         WaitSecs(1);
@@ -414,7 +426,7 @@ for count_trials = 1:length(trials(:,1))
 %%%%%%%%%%%% if in stage 1, tally up how many doors they got it in and see
 %%%%%%%%%%%% if you can switch them to the next phase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if stage == 1
+if stage == 1 && house < 9
     n_correct_required = 40; % 40, to give a greater probability of each door type appearing a good 
     % number of times
     moves_record = [moves_record, door_select_count];
@@ -440,8 +452,8 @@ PsychPortAudio('Close');
 Screen('CloseAll');
 
 sprintf('total points = %d', tpoints)
-if stage == 1 && ~go
+if stage == 1 && house < 9 &&  ~go
     sprintf('achievement unlocked! proceed to next level')
-elseif stage == 1 && count_trials == ntrials
+elseif stage == 1 && house < 9 && count_trials == ntrials
     sprintf('accuracy criterion wasn`t reached :(')
 end

@@ -263,7 +263,7 @@ time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+InitializePsychSound; % in case PC doesn't have .dll file
 % coin sound
 win_sounds = dir('win');
 % remove hidden files
@@ -415,8 +415,7 @@ for count_trials = 1:length(trials(:,1))
         if count_trials == n_practice_trials
         else
             take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
-                breaks, backRect, xCenter, yCenter, screenYpixels, tpoints, stage, ...
-                house);
+                breaks, backRect, xCenter, yCenter, screenYpixels, tpoints, stage);
             KbWait;
         end
         WaitSecs(1);

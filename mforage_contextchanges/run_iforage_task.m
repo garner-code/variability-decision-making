@@ -279,7 +279,7 @@ coin_handles = cell(1, numel(length(win_sounds)));
 for imp3 = 1:length(win_sounds)
     mp3fname = fullfile(win_sounds(imp3).folder, win_sounds(imp3).name);
     [y, freq] = audioread(mp3fname);
-    coin_handles{imp3} = PsychPortAudio('Open', [], [], 0, freq, size(y, 2)); % get handle
+    coin_handles{imp3} = PsychPortAudio('Open', 6, [], 0, freq, size(y, 2)); % get handle
     PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
 end
 
@@ -294,7 +294,7 @@ PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
 SetMouse(xCenter, yCenter, window);
 
 % things to collect during the experiment
-if stage == 1 && house < 9
+if stage == 1 
     moves_record = [];
     moves_goal = 4;
 end
@@ -426,17 +426,20 @@ for count_trials = 1:length(trials(:,1))
 %%%%%%%%%%%% if you can switch them to the next phase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if stage == 1 && house < 9
-    n_correct_required = 40; % 40, to give a greater probability of each door type appearing a good 
+    n_correct_required = 40; % 40, to give a greater probability of each door type appearing a good
     % number of times
     moves_record = [moves_record, door_select_count];
 
     if count_trials > n_practice_trials + n_correct_required
         go = tally_moves(moves_record, moves_goal, count_trials, n_correct_required); % returns a true if we should proceed as normal
-        
+
         if ~go
             break
         end
     end
+elseif stage == 1 && house == 9
+
+    moves_record = [moves_record, door_select_count];
 end % end stage 1 response tally
 
 if stage == 3 && experiment == 2 && count_trials == n_trials_per_transfer_type
@@ -454,5 +457,9 @@ sprintf('total points = %d', tpoints)
 if stage == 1 && house < 9 &&  ~go
     sprintf('achievement unlocked! proceed to next level')
 elseif stage == 1 && house < 9 && count_trials == length(trials(:,1))
-    sprintf('accuracy criterion wasn`t reached :(')
+    sprintf('accuracy criterion wasn`t reached this time, check next stage :(')
+elseif stage == 1 && house == 9
+    acc_house_1 = mean(moves_record(trials(:,2) == 1) <= moves_goal);
+    acc_house_2 = mean(moves_record(trials(:,2) == 2) <= moves_goal);
+    sprintf('house 1 acc: %.2f, house 2 acc: %.2f', acc_house_1, acc_house_2)
 end

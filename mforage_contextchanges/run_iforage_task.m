@@ -94,7 +94,7 @@ if stage == 1 && house < 9% if its initial learning
 elseif stage == 1 && house == 9
 
     n_practice_trials = 0;
-    ntrials = 40; % KG: MFORAGE - max per context
+    ntrials = 80; % KG: MFORAGE - max per context
     [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house); 
 
 elseif stage == 2
@@ -426,12 +426,12 @@ for count_trials = 1:length(trials(:,1))
 %%%%%%%%%%%% if you can switch them to the next phase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if stage == 1 && house < 9
-    n_practice_prior_test = 80; % the minumum base
+
     n_correct_required = 40; % 40, to give a greater probability of each door type appearing a good
     % number of times
     moves_record = [moves_record, door_select_count];
 
-    if count_trials > n_practice_trials + n_practice_prior_test + n_correct_required
+    if count_trials > n_practice_trials + n_correct_required
         go = tally_moves(moves_record, moves_goal, count_trials, n_correct_required); % returns a true if we should proceed as normal
 
         if ~go

@@ -1,6 +1,6 @@
 function [go] = tally_moves(moves_record, moves_goal, count_trials, n_correct_required)
 % TALLY_GOES - count up how many trials over which participants scored >
-% 90% over the past 10 trials
+% 90% over the past n_correct_required trials
 % INPUTS
 % moves_record = the number of moves made on each trial so far
 % moves_goal = number of moves they are aiming for

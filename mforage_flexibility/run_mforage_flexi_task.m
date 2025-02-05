@@ -38,7 +38,7 @@ clear mex
 sub.num = input('sub number? ');
 sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
 sub.tpoints = input('points? '); % enter points scored so far
-sub.experiment = 'exp_flex';
+sub.experiment = 'flex';
 
 exp_code = sub.experiment;
 sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
@@ -199,7 +199,7 @@ KbName('UnifyKeyNames');
 GetSecs;
 AssertOpenGL
 Screen('Preference', 'SkipSyncTests', 1);
-PsychDebugWindowConfiguration;
+%PsychDebugWindowConfiguration;
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
 screens = Screen('Screens');
@@ -374,12 +374,6 @@ for count_trials = 1:length(trials(:,1))
     while buttons(button_idx)
         [~,~,buttons] = GetMouse(window);
     end
-    if stage == 3 && experiment == 1
-    else
-       wait_on = GetSecs;
-       WaitSecs(0.5-(wait_on - tgt_on)); % just create a small gap between target offset and onset, but not on the proactive switching task 
-        % stop sound
-    end
     % of next door
     tpoints = tpoints + points;
 
@@ -422,10 +416,6 @@ elseif stage == 1 && house == 9
 
     moves_record = [moves_record, door_select_count];
 end % end stage 1 response tally
-
-if stage == 3 && experiment == 2 && count_trials == n_trials_per_transfer_type
-    run_house_change(window, screenYpixels); % let participants know they are changing house
-end
     
 end
 

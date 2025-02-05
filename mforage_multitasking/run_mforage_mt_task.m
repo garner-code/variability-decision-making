@@ -151,6 +151,8 @@ if stage == 1 && house == 1
     trials   = [practice; trials];
 end
 
+%%%%% this will need to be adjusted to accommodate the new trial info
+%%%%%% for stage 3
 write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
     door_probs, sub_config, door_ps, sub_dir, house);
 
@@ -165,9 +167,7 @@ write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
 
 % first put the colours in order of the counterbalancing
 green = [27, 158, 119]; 
-%orange = [217, 95, 2];
 purple = [117, 112, 179];
-%pink = [189, 41, 138]; 
 colour_options = {green, purple};
 
 base_context_learn = [colour_options{sub_config(11)}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
@@ -193,8 +193,11 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% other considerations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-breaks = 40; % how many trials inbetween breaks?
+if stage == 3
+    breaks = 32;
+else
+    breaks = 40; % how many trials inbetween breaks?
+end
 count_blocks = 0;
 button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
 
@@ -318,8 +321,38 @@ for count_trials = 1:length(trials(:,1))
     draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
     draw_background(window, backRect, xCenter, yCenter, col);
     draw_doors(window, doorRects, doors_closed_cols);
+    % if its a multitask trial, and the mt is due to happen when the
+    % cue happens, draw the mt target %%%%%%%%%% NOTE: add priority to
+    % instructions
+    if(trials(count_trials,9)==1 && ~trials(count_trials,8))
+        % col 7 = mt location 
+        % col 8 = tgt for mt task
+        % col 9 = mt trial (1 for yes, 0 for no)
+        %%%%%% note, this will become a function
+        if image_num < 10
+            if exist(sprintf('tgt0-100/tgt0%d.jpeg', image_num))
+                im_fname = sprintf('tgt0-100/tgt0%d.jpeg', image_num);
+            else
+                im_fname = sprintf('tgt0-100/tgt0%d.jpg', image_num);
+            end
+        else
+            if exist(sprintf('tgt0-100/tgt%d.jpeg', image_num))
+                im_fname = sprintf('tgt0-100/tgt%d.jpeg', image_num);
+            else
+                im_fname = sprintf('tgt0-100/tgt%d.jpg', image_num);
+            end
+        end
+
+        im = imread(im_fname);
+        tex = Screen('MakeTexture', window, im);
+        im_rect = doorRects(:, didx);
+        Screen('DrawTexture', window, tex, [], im_rect);
+    end
+
     trial_start = Screen('Flip', window); % use this time to determine the time of target onset
-    
+    if(trials(count_trials,9)==1 && ~trials(count_trials,8))
+        mt_start = trial_start;
+    end
     while ~any(tgt_found)
         
         door_on_flag = 0; % poll until a door has been selected

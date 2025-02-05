@@ -35,6 +35,15 @@ clear mex
 % task, pc, matlab and psychtoolbox version, eeg system (amplifier, hardware filter, cap, placement scheme, sample
 % rate), red smi system, description of file structure
 %%%%%% manual things
+where = 2; % if 0, in lab, if 1, in office, if 2, at home
+if ~where
+    aud_device = [];
+elseif where == 1
+    aud_device = 8;
+else
+    aud_device = 13;
+end
+
 sub.num = input('sub number? ');
 sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
 sub.tpoints = input('points? '); % enter points scored so far
@@ -112,7 +121,6 @@ elseif stage == 2
 
 elseif stage == 3
     
-    % THIS NEEDS TO BE REDONE
     n_practice_trials = 0;
     ntrials = 4*20;
     switch_prob = .5;
@@ -198,8 +206,11 @@ KbCheck;
 KbName('UnifyKeyNames');
 GetSecs;
 AssertOpenGL
-Screen('Preference', 'SkipSyncTests', 1);
-%PsychDebugWindowConfiguration;
+if where == 1 || where == 2
+    Screen('Preference', 'SkipSyncTests', 1); %%%% only for debug mode!
+    Screen('Preference', 'ConserveVRAM', 64); %%%% only for debug mode!
+    PsychDebugWindowConfiguration;
+end
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
 screens = Screen('Screens');
@@ -260,7 +271,7 @@ coin_handles = cell(1, numel(length(win_sounds)));
 for imp3 = 1:length(win_sounds)
     mp3fname = fullfile(win_sounds(imp3).folder, win_sounds(imp3).name);
     [y, freq] = audioread(mp3fname);
-    coin_handles{imp3} = PsychPortAudio('Open', 8, [], 0, freq, size(y, 2)); % get handle
+    coin_handles{imp3} = PsychPortAudio('Open', aud_device, [], 0, freq, size(y, 2)); % get handle
     PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
 end
 

@@ -31,8 +31,8 @@ trial_struct(:,1) = 1:length(trial_struct(:,1)); % allocate trial number
 
 % set up single switch as in learning stage
 [ttrials, ~] = size(trial_struct);
-trial_struct(1:(ttrials/2),2) = sub_config(12);
-trial_struct((ttrials/2)+1:ttrials,2) = 3 - sub_config(12);
+trial_struct(1:(ttrials/2),2) = datasample(1:2,1); % randomise which context comes first
+trial_struct((ttrials/2)+1:ttrials,2) = 3 - trial_struct(1,2);
 
 % get locations for this stage % WARNING - HARD CODED
 ca_idxs = sub_config(3:6); 

@@ -351,7 +351,8 @@ for count_trials = 1:length(trials(:,1))
 
     trial_start = Screen('Flip', window); % use this time to determine the time of target onset
     if(trials(count_trials,9)==1 && ~trials(count_trials,8))
-        mt_start = trial_start;
+        mt_start = trial_start; %%%%% will always need the mt_start as will need to turn it
+        %%%% off after 200 ms
     end
     while ~any(tgt_found)
         

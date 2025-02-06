@@ -2,7 +2,7 @@ function [tgt_found, didx, door_on_flag] = query_open_door(trial_start, sub, ses
     trial_n, cond, door_p, tgt_flag, window, ...
     backRect, edgeRect, xCenter, yCenter, edgeCol, backCol, ...
     doorRects, doorClosedCol, doorOpenCol,...
-    didx, fid, fform, x, y, button_idx, context_on)
+    didx, fid, fform, x, y, button_idx, context_on, mt)
 
 % QUERY_OPEN_DOOR: this function queries whether the selected door is the
 % target door or not.
@@ -21,10 +21,26 @@ tmp_door_cols = doorClosedCol;
 draw_edge(window, edgeRect, xCenter, yCenter, edgeCol, trial_start, context_on);
 draw_background(window, backRect, xCenter, yCenter, backCol);
 draw_doors(window, doorRects, tmp_door_cols);
+if mt.on % if this is a multitask trial, 
+    % if it was a onset mt trial, or didx is == mt.bait, check if the time
+    % is within the stimulus presentation window, and display mt target if
+    % so
+    if ~mt.bait || mt.bait == didx
+        if (GetSecs - mt.start) < mt.stim_dur
+            draw_mt_tgt(window,doorRects,mt.loc,mt.tgt_id);
+        end
+    end
+end
+
 Screen('DrawingFinished', window);
 vbl = Screen('Flip', window);
-
+if mt.on
+    if didx == mt.bait
+        mt.start = vbl; % so can work out when to
+    end
+end
 timer = GetSecs - trial_start;
+
 
 % check if the selected door is a target door
 if didx == tgt_flag
@@ -56,6 +72,16 @@ else
             draw_edge(window, edgeRect, xCenter, yCenter, edgeCol, trial_start, context_on);
             draw_background(window, backRect, xCenter, yCenter, backCol);
             draw_doors(window, doorRects, tmp_door_cols);
+            if mt.on % if this is a multitask trial,
+                % if it was a onset mt trial, or didx is == mt.bait, check if the time
+                % is within the stimulus presentation window, and display mt target if
+                % so
+                if ~mt.bait || mt.bait == didx
+                    if (GetSecs - mt.start) < mt.stim_dur
+                        draw_mt_tgt(window,doorRects,mt.loc,mt.tgt_id);
+                    end
+                end
+            end
             Screen('DrawingFinished', window);
             vbl = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi); % limit samples to flip rate
             fprintf(fid, fform, sub, sess, trial_n, cond, timer, door_on_flag, didx, d_p_idx, tgt_flag, tgt_found, x, y); % KG: MFORAGE: Check this matches up with other function and BEH_FORM

@@ -12,7 +12,7 @@ function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_mt(ntrials, sub
 %
 % 
 % RETURNS:
-% [trial_struct] = 5 x ntrials matrix
+% [trial_struct] = 9 x ntrials matrix
 % col 1 = trial number
 % col 2 = context - 1 or 2
 % col 3 = target door for that trial
@@ -27,11 +27,16 @@ function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_mt(ntrials, sub
 
 ndoors = length(door_probs);
 ntargets = 100; % total number of targets to choose from
-tntrials = ntrials*2;% this assumes only 2 contexts, the
+% ntrials = the number of trials in each condition. Each full
+% counterbalancing of baits vs tgt locations == 64 trials, therefore
+% we need to divide ntrials by 64 to get the number of times we should
+% replicate the trial matrix at the end of this function
+n_base = 64;
+n_repeat_base = ntrials/n_base;
+
+tntrials = ntrials/n_repeat_base*2;% this assumes only 2 contexts, the
 % hardcoded 2 would need to change for experiments involving more than 2.
 trial_struct = zeros(tntrials, 9); 
-
-trial_struct(:,1) = 1:length(trial_struct(:,1)); % allocate trial number
 
 % set up single switch as in learning stage
 [ttrials, ~] = size(trial_struct);
@@ -83,8 +88,8 @@ trial_struct(trial_struct(:,2) == 2, 4) = max(cb_ps);
 
 % now add which target will be presented on that trial
 trial_struct(:,5) = 0;
-trial_struct(trial_struct(:,2) == 1, 5) = randi(ntargets, 1, ntrials);
-trial_struct(trial_struct(:,2) == 2, 5) = randi(ntargets, 1, ntrials);
+trial_struct(trial_struct(:,2) == 1, 5) = randi(ntargets, 1, n_base);
+trial_struct(trial_struct(:,2) == 2, 5) = randi(ntargets, 1, n_base);
 
 trial_struct(trial_struct(:,2) == 1, 6) = ca_trigger;
 trial_struct(trial_struct(:,2) == 2, 6) = cb_trigger;
@@ -92,11 +97,13 @@ trial_struct(trial_struct(:,2) == 1, 7) = ca_mt_loc;
 trial_struct(trial_struct(:,2) == 2, 7) = cb_mt_loc;
 trial_struct(:,8) = randi(ntargets, 1, tntrials); % FOR NOW, TGT NUMBER
 trial_struct(:,9) = 1;
-% now make a trialstruct with 0 for col 9, so no multitask
-tmp = trial_struct;
-tmp(:,6:9) = 0;
 
-trial_struct = [trial_struct; tmp];
+% now repeat the trial structure as many times as required to get the 
+% full number of trials
+trial_struct = repmat(trial_struct, n_repeat_base, 1);
+
+
+% trial_struct = [trial_struct; tmp];
 % now randomly shuffle the rows of the matrix, within context
 ca_trl_idx = find(trial_struct(:,2) == 1);
 trial_struct(ca_trl_idx, :) = ...
@@ -105,6 +112,7 @@ cb_trl_idx = find(trial_struct(:,2) == 2);
 trial_struct(cb_trl_idx, :) = ...
     trial_struct(cb_trl_idx(randperm(length(cb_trl_idx))),:);
 
-trial_struct = create_switch_conditions(trial_struct, ntrials*2, p);
+trial_struct(:,1) = 1:length(trial_struct(:,1)); % allocate trial number
+trial_struct = create_switch_conditions(trial_struct, ntrials, p);
 
 end

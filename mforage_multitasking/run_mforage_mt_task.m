@@ -79,6 +79,7 @@ if stage == 1
 else
     house = 0; % not relevant because we are mixing up the houses, so set to zero
 end
+%%%%%%%%%%%%%%%% K.G. add an additional file for mt behaviour for stage 3
 [beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code, house); % this is the behaviour and the events log
 
 % probabilities of target location and number of doors
@@ -122,9 +123,19 @@ elseif stage == 2
 elseif stage == 3
     
     n_practice_trials = 0;
-    ntrials = 64;
+    ntrials = 64*2;
     switch_prob = .5;
     [trials, ca_ps, cb_ps] = generate_trial_structure_mt(ntrials, sub_config, door_probs, switch_prob);
+    % guide to mt trial structure
+    % col 1 = trial number
+    % col 2 = context - 1 or 2
+    % col 3 = target door for that trial
+    % col 4 = a priori p(tgt door)
+    % col 5 = target for that trial
+    % col 6 = after which response mt should come on, if coming on
+    % col 7 = mt tgt location 
+    % col 8 = which tgt for mt task
+    % col 9 = mt trial (1 for yes, 0 for no)
 end
 
 if stage == 1
@@ -151,7 +162,7 @@ if stage == 1 && house == 1
     trials   = [practice; trials];
 end
 
-%%%%% this will need to be adjusted to accommodate the new trial info
+%%%%% K.G. this will need to be adjusted to accommodate the new trial info
 %%%%%% for stage 3
 write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
     door_probs, sub_config, door_ps, sub_dir, house);
@@ -254,7 +265,7 @@ r = doorPix/2; % radius is the distance from center to the edge of the door
 time.ifi = Screen('GetFlipInterval', window);
 time.frames_per_sec = round(1/time.ifi);
 time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
-
+time.mt_stim_on = round(.200/time.ifi); % how long we'll keep the multitasking stimulus on
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -312,7 +323,26 @@ for count_trials = 1:length(trials(:,1))
     
     % set context colours according to condition
     edge_col = context_cols(trials(count_trials, 2), :); % KG: select whether it is context 1 or 2
-           
+
+    if stage < 3 || ~ trials(count_trials,9) % if its not the mt session or trial then disable mt functions
+        mt.on = 0;
+        mt.on_now = 0;
+        mt.start = 0;
+        mt.bait = 0;  % strictly mt_on = 0 should deactivate use of bait, loc & tgt_id
+        mt.loc = 0;   % but being safe/setting to NaN/zero for debug purposes
+        mt.tgt_id = 0;
+        mt.stim_dur = 0;
+    else
+
+        mt.on = 1; % implement multitasking functions
+        mt.on_now = 0; % this signals if 
+        mt.start = 0;
+        mt.bait = trials(count_trials,6);  % if participant responds on door x then show the mt target
+        mt.loc = trials(count_trials, 7); % show the mt target here
+        mt.tgt_id = trials(count_trials, 8);
+        mt.stim_dur = time.mt_stim_on; % how long to keep the mt target on the screen
+    end
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%% run trial
     tgt_found = 0;
@@ -321,39 +351,19 @@ for count_trials = 1:length(trials(:,1))
     draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
     draw_background(window, backRect, xCenter, yCenter, col);
     draw_doors(window, doorRects, doors_closed_cols);
-    % if its a multitask trial, and the mt is due to happen when the
-    % cue happens, draw the mt target %%%%%%%%%% NOTE: add priority to
-    % instructions
-    if(trials(count_trials,9)==1 && ~trials(count_trials,8))
-        % col 7 = mt location 
-        % col 8 = tgt for mt task
-        % col 9 = mt trial (1 for yes, 0 for no)
-        %%%%%% note, this will become a function
-        if image_num < 10
-            if exist(sprintf('tgt0-100/tgt0%d.jpeg', image_num))
-                im_fname = sprintf('tgt0-100/tgt0%d.jpeg', image_num);
-            else
-                im_fname = sprintf('tgt0-100/tgt0%d.jpg', image_num);
-            end
-        else
-            if exist(sprintf('tgt0-100/tgt%d.jpeg', image_num))
-                im_fname = sprintf('tgt0-100/tgt%d.jpeg', image_num);
-            else
-                im_fname = sprintf('tgt0-100/tgt%d.jpg', image_num);
-            end
+
+    if mt.on
+        if ~mt.bait
+            draw_mt_tgt(window,doorRects,mt.loc,mt.tgt_id);
         end
-
-        im = imread(im_fname);
-        tex = Screen('MakeTexture', window, im);
-        im_rect = doorRects(:, didx);
-        Screen('DrawTexture', window, tex, [], im_rect);
     end
-
     trial_start = Screen('Flip', window); % use this time to determine the time of target onset
-    if(trials(count_trials,9)==1 && ~trials(count_trials,8))
-        mt_start = trial_start; %%%%% will always need the mt_start as will need to turn it
-        %%%% off after 200 ms
+    if mt.on
+        if ~mt.bait
+            mt.start = trial_start; % so can work out when to 
+        end
     end
+
     while ~any(tgt_found)
         
         door_on_flag = 0; % poll until a door has been selected
@@ -369,7 +379,7 @@ for count_trials = 1:length(trials(:,1))
                                                                 tgt_flag, ...
                                                                 xPos, yPos, ...
                                                                 r, door_ps(trials(count_trials,2), :), trial_start, ...
-                                                                button_idx, time.context_cue_on);
+                                                                button_idx, time.context_cue_on, mt);
 
         end
 
@@ -382,6 +392,11 @@ for count_trials = 1:length(trials(:,1))
            % function, if the target is at the location of the selected
            % door
             
+           % do we need to start polling the time to display an mt
+           % stimulus?
+           if mt.on && didx == mt.bait
+               mt.start = GetSecs;
+           end
             % didx & tgt_flag info are getting here
             [tgt_found, didx, door_on_flag] = query_open_door(trial_start, sub.num, sub.stage, ...
                                                               count_trials, trials(count_trials,2), ...
@@ -390,7 +405,8 @@ for count_trials = 1:length(trials(:,1))
                                                               backRect, edgeRect, xCenter, yCenter, edge_col, col, ...
                                                               doorRects, doors_closed_cols, ...
                                                               door_open_col,...
-                                                              didx, beh_fid, beh_form, x, y, button_idx, time.context_cue_on);
+                                                              didx, beh_fid, beh_form, x, y, button_idx, time.context_cue_on, ...
+                                                              mt);
 
         end
     end % end of trial

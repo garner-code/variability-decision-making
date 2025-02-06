@@ -28,7 +28,13 @@ clear mex
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % session settings
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+% make .json files functions to be written
+%%%%%% across participants
+% http://bids.neuroimaging.io/bids_spec.pdf
+% 2. metadata file for the experiment - to go in the highest level, include
+% task, pc, matlab and psychtoolbox version, eeg system (amplifier, hardware filter, cap, placement scheme, sample
+% rate), red smi system, description of file structure
+%%%%%% manual things
 where = 1; % if 0, in lab, if 1, in office, if 2, at home
 if ~where
     aud_device = [];
@@ -38,17 +44,11 @@ else
     aud_device = 13;
 end
 
-% make .json files functions to be written
-%%%%%% across participants
-% http://bids.neuroimaging.io/bids_spec.pdf
-% 2. metadata file for the experiment - to go in the highest level, include
-% task, pc, matlab and psychtoolbox version, eeg system (amplifier, hardware filter, cap, placement scheme, sample
-% rate), red smi system, description of file structure
-% manual things
 sub.num = input('sub number? ');
 sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
 sub.tpoints = input('points? '); % enter points scored so far
 sub.experiment = 'mt';
+
 exp_code = sub.experiment;
 sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
 
@@ -136,7 +136,6 @@ elseif stage == 3
     % col 7 = mt tgt location 
     % col 8 = which tgt for mt task
     % col 9 = mt trial (1 for yes, 0 for no)
-    % col 10 = tgt type 1 or 2
 end
 
 if stage == 1
@@ -163,8 +162,12 @@ if stage == 1 && house == 1
     trials   = [practice; trials];
 end
 
+%%%%% K.G. this will need to be adjusted to accommodate the new trial info
+%%%%%% for stage 3
 write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
     door_probs, sub_config, door_ps, sub_dir, house);
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -217,9 +220,7 @@ KbCheck;
 KbName('UnifyKeyNames');
 if stage == 3 % setup to collect keyboard responses on multitask trials
 
-    mt.resp_key_idx = KbName({'z','x'}); % also use this to score whether
-    % the mt resp was correct or incorrect - (using col 10 of the trials
-    % matrix)
+    mt.resp_key_idx = KbName({'z','x'});
     key_flags = zeros(1,256); % an array of zeros
     key_flags(mt.resp_key_idx)=1; % monitor only spaces
     KbQueueCreate([],key_flags);
@@ -467,9 +468,6 @@ for count_trials = 1:length(trials(:,1))
             end
         end
     end
-    if stage == 3 && mt.happened
-        KbQueueFlush()
-    end
 
     if stage == 1 && house == 1 && count_trials == n_practice_trials
 
@@ -511,10 +509,9 @@ elseif stage == 1 && house == 9
     moves_record = [moves_record, door_select_count];
 end % end stage 1 response tally
     
-end
+    end
 
 
-KbQueueRelease();
 
 sca;
 Priority(0);

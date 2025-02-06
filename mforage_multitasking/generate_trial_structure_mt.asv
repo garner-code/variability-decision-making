@@ -28,17 +28,14 @@ function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_mt(ntrials, sub
 
 ndoors = length(door_probs);
 ntargets = 100; % total number of targets to choose from
-ncontexts = 2;
-
 % ntrials = the number of trials in each condition. Each full
 % counterbalancing of baits vs tgt locations vs tgt ids == 128 trials, therefore
 % we need to divide ntrials by 64 to get the number of times we should
 % replicate the trial matrix at the end of this function
 n_base = 128;
 n_repeat_base = ntrials/n_base;
-n_mt_tgt_types = 2;
 
-tntrials = ntrials/n_repeat_base*ncontexts;% this assumes only 2 contexts, the
+tntrials = ntrials/n_repeat_base*2;% this assumes only 2 contexts, the
 % hardcoded 2 would need to change for experiments involving more than 2.
 trial_struct = zeros(tntrials, 10);  
 
@@ -61,8 +58,8 @@ cb_ps(cb_idxs) = door_probs(door_probs > 0);
 % the full balance of target door, place when multitask will be revealed
 % and mt location
 % target
-ca = repmat(repelem(ca_idxs, length(ca_idxs)*length(ca_idxs)),1,2);
-cb = repmat(repelem(cb_idxs, length(ca_idxs)*length(ca_idxs)),1,2);
+ca = repelem(ca_idxs, length(ca_idxs)*length(ca_idxs));
+cb = repelem(cb_idxs, length(ca_idxs)*length(ca_idxs));
 % location when mt will be presented if its happening (i.e. where in
 % task a does the mt occur?
 ca_trigger = zeros(1,length(ca));
@@ -70,16 +67,16 @@ cb_trigger = zeros(1,length(cb));
 for i = 1:length(ca_idxs)
     ca_trigger(ca == ca_idxs(i)) = ...
         repmat([0, ca_idxs(ca_idxs ~= ca_idxs(i))], ...
-                            1, length(ca_idxs)*n_mt_tgt_types); % * 2 as 2 target identities
+                            1, length(ca_idxs));
     cb_trigger(cb == cb_idxs(i)) = ...
         repmat([0, cb_idxs(cb_idxs ~= cb_idxs(i))], ...
-                            1, length(cb_idxs)*n_mt_tgt_types);
+                            1, length(cb_idxs));
 end
 
 % location for multitask | ca
-ca_mt_loc = repmat(repelem(cb_idxs, length(ca_idxs)), 1, length(ca_idxs) * n_mt_tgt_types);
-cb_mt_loc = repmat(repelem(ca_idxs, length(cb_idxs)), 1, length(cb_idxs) * n_mt_tgt_types);
-mt_tgt_type = repelem([1,2],n_base/n_mt_tgt_types);
+ca_mt_loc = repmat(repelem(cb_idxs, length(ca_idxs)), 1, length(ca_idxs));
+cb_mt_loc = repmat(repelem(ca_idxs, length(cb_idxs)), 1, length(cb_idxs));
+mt_tgt_type = repmat([1])
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % now put the info into the trial structure
@@ -102,7 +99,6 @@ trial_struct(trial_struct(:,2) == 1, 7) = ca_mt_loc;
 trial_struct(trial_struct(:,2) == 2, 7) = cb_mt_loc;
 trial_struct(:,8) = randi(ntargets, 1, tntrials); % FOR NOW, TGT NUMBER
 trial_struct(:,9) = 1;
-trial_struct(:,10) = repmat(mt_tgt_type, 1, ncontexts);
 
 % now repeat the trial structure as many times as required to get the 
 % full number of trials

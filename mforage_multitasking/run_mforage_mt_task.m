@@ -79,15 +79,16 @@ if stage == 1
 else
     house = 0; % not relevant because we are mixing up the houses, so set to zero
 end
-%%%%%%%%%%%%%%%% K.G. add an additional file for mt behaviour for stage 3
-[beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code, house); % this is the behaviour and the events log
 
+[beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code, house); % this is the behaviour and the events log
+if stage == 3
+    [mt_beh_form, mt_beh_fid] = initiate_sub_beh_mt_file(sub.num, sub_dir, exp_code);
+end
 % probabilities of target location and number of doors
 load('probs_cert_world_v2.mat'); % this specifies that there are 4 doors with p=0.25 each 
 door_probs   = probs_cert_world;
 clear probs_cert_world 
 
-% KG: MFORAGE: will change the below
 if stage == 1 && house < 9% if its initial learning
 
     n_practice_trials = 5;
@@ -407,8 +408,10 @@ for count_trials = 1:length(trials(:,1))
            % do we need to start polling the time to display an mt
            % stimulus?
            if mt.on && didx == mt.bait
-               mt.start = GetSecs;
-               mt.happened = 1;
+               if ~mt.happened 
+                    mt.start = GetSecs;
+                    mt.happened = 1;
+               end
            end
             % didx & tgt_flag info are getting here
             [tgt_found, didx, door_on_flag] = query_open_door(trial_start, sub.num, sub.stage, ...
@@ -448,6 +451,8 @@ for count_trials = 1:length(trials(:,1))
     while buttons(button_idx)
         [~,~,buttons] = GetMouse(window);
     end
+
+    
     % of next door
     tpoints = tpoints + points;
 
@@ -469,6 +474,25 @@ for count_trials = 1:length(trials(:,1))
     end
     if stage == 3 && mt.happened
         KbQueueFlush()
+    end
+    if stage == 3
+        % record the multitasking events to the behavioural log file
+        if mt.happened
+           fprintf(mt_beh_fid, mt_beh_form, sub.num, ...
+               sub.stage, count_trials, trials(count_trials,2), ...
+               trials(count_trials,6), trials(count_trials,7),...
+               trials(count_trials,8), mt.start, time_pressed, ...
+               time_pressed-mt.start, trials(count_trials,10),...
+               key_pressed); 
+
+        else
+           fprintf(mt_beh_fid, mt_beh_form, sub.num, ...
+               sub.stage, count_trials, trials(count_trials,2), ...
+               trials(count_trials,6), trials(count_trials,7),...
+               trials(count_trials,8), NaN, NaN, ...
+               NaN, trials(count_trials,10),...
+               NaN); 
+        end
     end
 
     if stage == 1 && house == 1 && count_trials == n_practice_trials

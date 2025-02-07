@@ -35,8 +35,10 @@ end
 Screen('DrawingFinished', window);
 vbl = Screen('Flip', window);
 if mt.on
-    if didx == mt.bait
-        mt.start = vbl; % so can work out when to
+    if ~mt.happened
+        if didx == mt.bait
+            mt.start = vbl; % start timing the mt stimulus only if it
+        end % hasn't been shown before
     end
 end
 timer = GetSecs - trial_start;
@@ -47,7 +49,7 @@ if didx == tgt_flag
     % record the door numbber into the results file
     d_p_idx = door_p(didx);
     tgt_found = 1;
-    fprintf(fid, fform, sub, sess, trial_n, cond, timer, door_on_flag, didx, d_p_idx, tgt_flag, tgt_found, x, y); % KG: MFORAGE: Check this matches up with other function and BEH_FORM, 
+    fprintf(fid, fform, sub, sess, trial_n, cond, timer, door_on_flag, didx, d_p_idx, tgt_flag, tgt_found, x, y); 
 
 else
     

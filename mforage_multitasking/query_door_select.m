@@ -30,6 +30,7 @@ draw_doors(window, doorRects, tmp_door_cols);
 if mt.on
     if (GetSecs - mt.start) < mt.stim_dur
         draw_mt_tgt(window,doorRects,mt.loc,mt.tgt_id)
+        fprintf('query door select entered %.3fms after onset', GetSecs - mt.start)
     end
 end
 Screen('DrawingFinished', window);

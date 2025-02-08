@@ -1,4 +1,5 @@
-function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_mt(ntrials, sub_config, door_probs, p)
+function [trial_struct, ca_ps, cb_ps] = generate_trial_structure_mt(ntrials,...
+    sub_config, door_probs, breaks)
 %%%%%
 % GENERATE_TRIAL_STRUCTURE_TRAIN
 % generate the trial structure for the task switching stage
@@ -118,7 +119,17 @@ cb_trl_idx = find(trial_struct(:,2) == 2);
 trial_struct(cb_trl_idx, :) = ...
     trial_struct(cb_trl_idx(randperm(length(cb_trl_idx))),:);
 
+%%%%%% now allocate blocks of trials to each context
+blocks = repelem([1,2], ntrials/breaks);
+blocks = blocks(randperm(length(blocks)));
+blocks = repelem(blocks, breaks); 
+
+tmp = zeros(size(trial_struct,1), size(trial_struct,2));
+tmp(blocks == 1, :) = trial_struct(trial_struct(:,2) == 1, :);
+tmp(blocks == 2, :) = trial_struct(trial_struct(:,2) == 2, :);
+trial_struct = tmp;
 trial_struct(:,1) = 1:length(trial_struct(:,1)); % allocate trial number
-trial_struct = create_switch_conditions(trial_struct, ntrials, p);
+
+%trial_struct = create_switch_conditions(trial_struct, ntrials, p);
 
 end

@@ -30,29 +30,25 @@ draw_doors(window, doorRects, tmp_door_cols);
 if mt.on
     if (GetSecs - mt.start) < mt.stim_dur
         draw_mt_tgt(window,doorRects,mt.loc,mt.tgt_id)
-        fprintf('query door select entered %.3fms after onset', GetSecs - mt.start)
     end
 end
 Screen('DrawingFinished', window);
 vbl = Screen('Flip', window);
 
 while ~any(start_test)
-    tmp_flag = 0;
+
     draw_edge(window, edgeRect, xCenter, yCenter, edgeCol, trialStart, context_on);
     draw_background(window, backRect, xCenter, yCenter, backCol);
     draw_doors(window, doorRects, tmp_door_cols);
     if mt.on
-        %%%%%%%%%% do I need to adjust this for whether its a start or
-        %%%%%%%%%% later mt trial? or will the fact that mt.start is either
-        %%%%%%%%%% zero or so long ago, be sufficient?
         if (GetSecs - mt.start) < mt.stim_dur
             draw_mt_tgt(window,doorRects,mt.loc,mt.tgt_id)
         end
-
     end
     Screen('DrawingFinished', window);
     vbl = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi); % limit samples to flip rate
-
+    
+    tmp_flag = 0;
     [x,y,buttons] = GetMouse(window); % has the mouse been clicked
     timer = GetSecs - trialStart;
     % logic of this is that for as long as there has been no button press,
@@ -89,7 +85,7 @@ while ~any(start_test)
     end
    
     % collect the data from this sample
-    fprintf(fid, fform, sub, sess, trial_n, cond, timer, tmp_flag, didx, curr_door_prob, tgt_flag, 0, x, y); % KG: MFORAGE: I HAVE ADJUSTED THIS FORMAT (BEH_FORM), NEED TO MATCH AGAINSTS SPECS
+    fprintf(fid, fform, sub, sess, trial_n, cond, timer, tmp_flag, didx, curr_door_prob, tgt_flag, 0, x, y);
     if tmp_flag == 1
         door_on_flag = 1;
     end

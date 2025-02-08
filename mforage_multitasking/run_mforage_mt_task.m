@@ -18,7 +18,7 @@
 % Rate of switches between contexts depends on stage and condition 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%z%
 
 % clear all the things
 sca
@@ -65,6 +65,18 @@ r_num = [num2str(sub.num) num2str(sub.stage)];
 r_num = str2double(r_num);
 rand('state',r_num);
 randstate = rand('state');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% other considerations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if stage == 3
+    breaks = 16;
+else
+    breaks = 40; % how many trials inbetween breaks?
+end
+count_blocks = 0;
+button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%% generate trial structure for participants and setup log files
@@ -125,8 +137,9 @@ elseif stage == 3
     
     n_practice_trials = 0;
     ntrials = 64*2;
-    switch_prob = .5;
-    [trials, ca_ps, cb_ps] = generate_trial_structure_mt(ntrials, sub_config, door_probs, switch_prob);
+    switch_prob = 1-0.9375;
+    [trials, ca_ps, cb_ps] = generate_trial_structure_mt(ntrials, sub_config, ...
+        door_probs, breaks);
     % guide to mt trial structure
     % col 1 = trial number
     % col 2 = context - 1 or 2
@@ -199,16 +212,6 @@ elseif stage == 2
         [0, 0, 0]]; % finish with practice context cols
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%% other considerations
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if stage == 3
-    breaks = 32;
-else
-    breaks = 40; % how many trials inbetween breaks?
-end
-count_blocks = 0;
-button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%% SET UP PSYCHTOOLBOX THINGS
@@ -231,7 +234,7 @@ AssertOpenGL
 if where == 1 || where == 2
     Screen('Preference', 'SkipSyncTests', 1); %%%% only for debug mode!
     Screen('Preference', 'ConserveVRAM', 64); %%%% only for debug mode!
-    PsychDebugWindowConfiguration;
+    %PsychDebugWindowConfiguration;
 end
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
@@ -273,7 +276,11 @@ r = doorPix/2; % radius is the distance from center to the edge of the door
 time.ifi = Screen('GetFlipInterval', window);
 time.frames_per_sec = round(1/time.ifi);
 time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
-time.mt_stim_on = .5; % how long we'll keep the multitasking stimulus on
+time.mt_stim_on = .2; % how long we'll keep the multitasking stimulus on
+time.mt_time_out = 3; % how many seconds until mt time out
+time.mt_time_out_frames = time.mt_time_out*time.frames_per_sec;
+time.tgt_dur = .15; % how long we'll keep the search target on for
+time.wait_frames = 1; % how many frames to wait before flipping
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -315,6 +322,7 @@ tpoints = sub.tpoints;
 
 for count_trials = 1:length(trials(:,1))
 
+    sprintf('trial %d', count_trials)
  
     if count_trials == 1
         run_instructions(window, screenYpixels, stage, house);
@@ -357,7 +365,7 @@ for count_trials = 1:length(trials(:,1))
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%% run trial
     tgt_found = 0;
-    mt.happened = 0;
+    mt.happened = 0
 
     % draw doors and start
     draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
@@ -373,7 +381,8 @@ for count_trials = 1:length(trials(:,1))
     if mt.on
         if ~mt.bait
             mt.start = trial_start; % so can work out when to 
-            mt.happened = 1;
+            mt.happened = 1
+            sprintf('bait was zero')
         end
     end
 
@@ -449,18 +458,30 @@ for count_trials = 1:length(trials(:,1))
                         screenYpixels, coin_handles);
         [~,~,buttons] = GetMouse(window);
     while buttons(button_idx)
-        [~,~,buttons] = GetMouse(window);
+        [~,~,buttons] = GetMouse(window); % check target has been released before moving on
     end
-
+    % keep the target on for another 150 msec before switching to the blank
+    % door display
+    WaitSecs(time.tgt_dur);
     
     % of next door
     tpoints = tpoints + points;
 
+    % okies, now present the blank doors and poll the mouse location
+    % until a response, if required
+
     % if the multitasking task happened, poll the keyboard until the
-    % response to the task is made
+    % response to the task is made, at the same time, present the unopened
+    % doors and poll for a response
     if mt.happened % did we present a mt stim?
         mt.resp_detect = 0;
-        while ~mt.resp_detect
+        mt.start_poll = GetSecs;
+        mt_resp_poll = Screen('Flip', window);
+
+        while ~mt.resp_detect %|| (GetSecs - mt.start_poll) < time.mt_time_out
+    
+
+            % do a single poll of the 
             [pressed, first_press]=KbQueueCheck(); % first press is an array indicating the time
             % that each key was first pressed
             if any(first_press(mt.resp_key_idx))
@@ -470,7 +491,21 @@ for count_trials = 1:length(trials(:,1))
 
                 mt.resp_detect = 1;
             end
+
+
+            draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
+            draw_background(window, backRect, xCenter, yCenter, col);
+            draw_doors(window, doorRects, doors_closed_cols);
+
+            query_mouse_resp(window,button_idx,xPos,yPos,r,door_ps(trials(count_trials,2), :),...
+                                    beh_fid,beh_form,sub.num,stage, count_trials,...
+                                    trials(count_trials,2), trial_start, tgt_flag);
+
+            mt_resp_poll = Screen('Flip', window, mt_resp_poll + ...
+                (time.wait_frames - 0.5) * time.ifi);
         end
+        % make sure to add nan's to the behavioural log file if this
+        % eventuality happens (aka the poll timed out before a response)
     end
     if stage == 3 && mt.happened
         KbQueueFlush()
@@ -478,13 +513,21 @@ for count_trials = 1:length(trials(:,1))
     if stage == 3
         % record the multitasking events to the behavioural log file
         if mt.happened
-           fprintf(mt_beh_fid, mt_beh_form, sub.num, ...
-               sub.stage, count_trials, trials(count_trials,2), ...
-               trials(count_trials,6), trials(count_trials,7),...
-               trials(count_trials,8), mt.start, time_pressed, ...
-               time_pressed-mt.start, trials(count_trials,10),...
-               key_pressed); 
-
+            if mt.resp_detect% response happened
+                fprintf(mt_beh_fid, mt_beh_form, sub.num, ...
+                    sub.stage, count_trials, trials(count_trials,2), ...
+                    trials(count_trials,6), trials(count_trials,7),...
+                    trials(count_trials,8), mt.start, time_pressed, ...
+                    time_pressed-mt.start, trials(count_trials,10),...
+                    key_pressed); 
+            else % if timed out
+                fprintf(mt_beh_fid, mt_beh_form, sub.num, ...
+                    sub.stage, count_trials, trials(count_trials,2), ...
+                    trials(count_trials,6), trials(count_trials,7),...
+                    trials(count_trials,8), NaN, NaN, ...
+                    NaN, trials(count_trials,10),...
+                    NaN);
+            end
         else
            fprintf(mt_beh_fid, mt_beh_form, sub.num, ...
                sub.stage, count_trials, trials(count_trials,2), ...

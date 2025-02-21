@@ -35,7 +35,7 @@ clear mex
 % task, pc, matlab and psychtoolbox version, eeg system (amplifier, hardware filter, cap, placement scheme, sample
 % rate), red smi system, description of file structure
 %%%%%% manual things
-where = 2; % if 0, in lab, if 1, in office, if 2, at home
+where = 1; % if 0, in lab, if 1, in office, if 2, at home
 if ~where
     aud_device = [];
 elseif where == 1
@@ -194,7 +194,7 @@ end
 %%%%%%% other considerations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-breaks = 40; % how many trials inbetween breaks?
+breaks = 20; % how many trials inbetween breaks?
 count_blocks = 0;
 button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
 
@@ -251,6 +251,7 @@ r = doorPix/2; % radius is the distance from center to the edge of the door
 time.ifi = Screen('GetFlipInterval', window);
 time.frames_per_sec = round(1/time.ifi);
 time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
+time.tgt_on = .5; % 500 msec
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
@@ -285,11 +286,16 @@ PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
 SetMouse(xCenter, yCenter, window);
 
 % things to collect during the experiment
-if stage == 1 
+if stage == 1 || stage == 3
     moves_record = [];
     moves_goal = 4;
 end
 tpoints = sub.tpoints;
+door_off_ts = []; % collect the times people turned doors off
+door_on_ts = []; % this will collect the times people turned the doors on
+door_idx_trialn = []; % collect the trial numbers that each collection of rts
+% belong to
+
 
 for count_trials = 1:length(trials(:,1))
 
@@ -306,7 +312,7 @@ for count_trials = 1:length(trials(:,1))
     tgt_loc = trials(count_trials, 3);
     tgt_flag = tgt_loc; %%%% where is the target
     door_select_count = 0; % track how many they got it in
-    
+
     % set context colours according to condition
     edge_col = context_cols(trials(count_trials, 2), :); % KG: select whether it is context 1 or 2
            
@@ -318,11 +324,21 @@ for count_trials = 1:length(trials(:,1))
     draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
     draw_background(window, backRect, xCenter, yCenter, col);
     draw_doors(window, doorRects, doors_closed_cols);
-    trial_start = Screen('Flip', window); % use this time to determine the time of target onset
+    if count_trials == 1
+        trial_start = Screen('Flip', window); % KG: changed for flexi to track
+        % time across whole experiment, rather than timings trial by trial,
+        % to make sure we were capturing data across time (not losing
+        % things between trials)
+    else 
+        Screen('Flip', window);
+    end
     
     while ~any(tgt_found)
         
+
         door_on_flag = 0; % poll until a door has been selected
+        door_off_ts = [door_off_ts, GetSecs]; % for providing feedback
+        door_idx_trialn = [door_idx_trialn, count_trials];
         while ~any(door_on_flag) 
             
             % poll what the mouse is doing, until a door is opened
@@ -338,8 +354,9 @@ for count_trials = 1:length(trials(:,1))
                                                                 button_idx, time.context_cue_on);
 
         end
-
+        
         door_select_count = door_select_count + 1;
+        door_on_ts = [door_on_ts, GetSecs]; % for providing feedback
         
         % door has been selected, so open it
         while any(door_on_flag) 
@@ -360,6 +377,8 @@ for count_trials = 1:length(trials(:,1))
 
         end
     end % end of trial
+
+
     
     % KG: MFORAGE: this feedback code may move dependening on other learning stages
     if stage < 3
@@ -376,16 +395,31 @@ for count_trials = 1:length(trials(:,1))
         feedback_on = 0;
     end
 
+    tgt_start = GetSecs;
+    
     [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
                         doorRects, doors_closed_cols, didx, ...
                         trials(count_trials,5), xCenter, yCenter, time.context_cue_on, ...
                         trial_start, door_select_count, feedback_on, ...
-                        screenYpixels, coin_handles);
-        [~,~,buttons] = GetMouse(window);
-    while buttons(button_idx)
-        [~,~,buttons] = GetMouse(window);
+                        coin_handles);
+    %%%%% KG task switching - add a loop that leaves the target on 
+    %%%%% for 500 msec, and polls the mouse during that time
+    while (GetSecs - tgt_on) < time.tgt_on % leave the target on for 500 ms
+        % but poll the mouse
+        WaitSecs(.015); % to mirror sample rate during the trials
+        post_tgt_response_poll(window, trial_start, ...
+                                xPos, yPos, r, door_ps(trials(count_trials,2), :),...
+                                beh_fid, beh_form, sub.num,...
+                                sub.stage, count_trials, trials(count_trials,2), ...
+                                tgt_flag)
     end
-    % of next door
+
+    %     [~,~,buttons] = GetMouse(window); % old code which just waited
+    %     for mouse release
+    % while buttons(button_idx)
+    %     [~,~,buttons] = GetMouse(window);
+    % end
+
     tpoints = tpoints + points;
 
     if stage == 1 && house == 1 && count_trials == n_practice_trials
@@ -399,8 +433,15 @@ for count_trials = 1:length(trials(:,1))
     else
         if count_trials == n_practice_trials
         else
+            
+            feedback = get_performance_feedback(door_off_ts, door_on_ts,...
+                        door_idx_trialn, ...
+                        moves_record, ...
+                        count_trials, breaks, stage);
             take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
-                breaks, backRect, xCenter, yCenter, screenYpixels, tpoints, stage);
+                        breaks, backRect, xCenter, yCenter, screenYpixels, ...
+                        tpoints, stage,...
+                        feedback);
             KbWait;
         end
         WaitSecs(1);
@@ -423,7 +464,7 @@ if stage == 1 && house < 9
             break
         end
     end
-elseif stage == 1 && house == 9
+elseif stage == 1 && house == 9 || stage == 3
 
     moves_record = [moves_record, door_select_count];
 end % end stage 1 response tally

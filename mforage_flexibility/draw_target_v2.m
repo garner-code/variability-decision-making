@@ -1,7 +1,7 @@
 function [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edgeCol, backCol, ...
     doorRects, doorCol,...
     didx, image_num, xCenter, yCenter, context_on, trial_start,...
-    door_select_count, feedback_on, screenYpixels, ...
+    door_select_count, feedback_on, ...
     coin_handles)
 % this function draws the target to the selected door
 % backRect/backCol = features of background
@@ -62,6 +62,6 @@ if points > 0
     PsychPortAudio('Start', coin_handles{points}, 1, 0, 0);
 end
 tgt.vbl = Screen('Flip', window);
-tgt_on = tgt.vbl;
+tgt_on = tgt.vbl; % this is what time the target is turned on
 
 end

@@ -53,12 +53,9 @@ exp_code = sub.experiment;
 sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
 
 % get sub info for setting up counterbalancing etc
-% sub infos is a matrix with the following columns
-% sub num, group, learning counterbalancing (1 [XY] vs 2 [YX]), 
-% training counterbalancing (1 [XY] vs 2 [YX] vs 3 [.2switch]),
-% test counterbalancing (something) %%% KG: will possibly add experiment in
-% here also
-version   = 1; % change to update output files with new versions
+% sub infos is a matrix with the key info for locations for running the 
+% task
+version = 1; % change to update output files with new versions
 stage = sub.stage;
 % set randomisation seed based on sub/sess number
 r_num = [num2str(sub.num) num2str(sub.stage)];
@@ -321,8 +318,6 @@ end
 tpoints = sub.tpoints;
 
 for count_trials = 1:length(trials(:,1))
-
-    sprintf('trial %d', count_trials)
  
     if count_trials == 1
         run_instructions(window, screenYpixels, stage, house);

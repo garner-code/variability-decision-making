@@ -9,7 +9,7 @@ elseif sess == 2
 elseif sess == 3
     ses_str = 'test';
 elseif sess == 4
-    ses_str = 'learn-check';
+    ses_str = 'mts';
 end
 
 if sub < 10

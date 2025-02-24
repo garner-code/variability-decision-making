@@ -18,7 +18,7 @@
 % Rate of switches between contexts depends on stage and condition 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%z%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % clear all the things
 sca
@@ -28,7 +28,13 @@ clear mex
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % session settings
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+% make .json files functions to be written
+%%%%%% across participants
+% http://bids.neuroimaging.io/bids_spec.pdf
+% 2. metadata file for the experiment - to go in the highest level, include
+% task, pc, matlab and psychtoolbox version, eeg system (amplifier, hardware filter, cap, placement scheme, sample
+% rate), red smi system, description of file structure
+%%%%%% manual things
 where = 1; % if 0, in lab, if 1, in office, if 2, at home
 if ~where
     aud_device = [];
@@ -38,42 +44,27 @@ else
     aud_device = 13;
 end
 
-% make .json files functions to be written
-%%%%%% across participants
-% http://bids.neuroimaging.io/bids_spec.pdf
-% 2. metadata file for the experiment - to go in the highest level, include
-% task, pc, matlab and psychtoolbox version, eeg system (amplifier, hardware filter, cap, placement scheme, sample
-% rate), red smi system, description of file structure
-% manual things
 sub.num = input('sub number? ');
 sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
 sub.tpoints = input('points? '); % enter points scored so far
-sub.experiment = 'mt';
+sub.experiment = 'flex';
+
 exp_code = sub.experiment;
 sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
 
 % get sub info for setting up counterbalancing etc
-% sub infos is a matrix with the key info for locations for running the 
-% task
-version = 1; % change to update output files with new versions
+% sub infos is a matrix with the following columns
+% sub num, group, learning counterbalancing (1 [XY] vs 2 [YX]), 
+% training counterbalancing (1 [XY] vs 2 [YX] vs 3 [.2switch]),
+% test counterbalancing (something) %%% KG: will possibly add experiment in
+% here also
+version   = 1; % change to update output files with new versions
 stage = sub.stage;
 % set randomisation seed based on sub/sess number
 r_num = [num2str(sub.num) num2str(sub.stage)];
 r_num = str2double(r_num);
 rand('state',r_num);
 randstate = rand('state');
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%% other considerations
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if stage == 3
-    breaks = 16;
-else
-    breaks = 40; % how many trials inbetween breaks?
-end
-count_blocks = 0;
-button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%% generate trial structure for participants and setup log files
@@ -88,16 +79,14 @@ if stage == 1
 else
     house = 0; % not relevant because we are mixing up the houses, so set to zero
 end
-
 [beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code, house); % this is the behaviour and the events log
-if stage == 3
-    [mt_beh_form, mt_beh_fid] = initiate_sub_beh_mt_file(sub.num, sub_dir, exp_code);
-end
+
 % probabilities of target location and number of doors
 load('probs_cert_world_v2.mat'); % this specifies that there are 4 doors with p=0.25 each 
 door_probs   = probs_cert_world;
 clear probs_cert_world 
 
+% KG: MFORAGE: will change the below
 if stage == 1 && house < 9% if its initial learning
 
     n_practice_trials = 5;
@@ -133,21 +122,9 @@ elseif stage == 2
 elseif stage == 3
     
     n_practice_trials = 0;
-    ntrials = 64*2;
-    switch_prob = 1-0.9375;
-    [trials, ca_ps, cb_ps] = generate_trial_structure_mt(ntrials, sub_config, ...
-        door_probs, breaks);
-    % guide to mt trial structure
-    % col 1 = trial number
-    % col 2 = context - 1 or 2
-    % col 3 = target door for that trial
-    % col 4 = a priori p(tgt door)
-    % col 5 = target for that trial
-    % col 6 = after which response mt should come on, if coming on
-    % col 7 = mt tgt location 
-    % col 8 = which tgt for mt task
-    % col 9 = mt trial (1 for yes, 0 for no)
-    % col 10 = tgt type 1 or 2
+    ntrials = 4*20;
+    switch_prob = .5;
+    [trials, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_config, door_probs, switch_prob);
 end
 
 if stage == 1
@@ -176,6 +153,8 @@ end
 
 write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
     door_probs, sub_config, door_ps, sub_dir, house);
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -186,7 +165,9 @@ write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
 
 % first put the colours in order of the counterbalancing
 green = [27, 158, 119]; 
+%orange = [217, 95, 2];
 purple = [117, 112, 179];
+%pink = [189, 41, 138]; 
 colour_options = {green, purple};
 
 base_context_learn = [colour_options{sub_config(11)}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
@@ -209,6 +190,13 @@ elseif stage == 2
         [0, 0, 0]]; % finish with practice context cols
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% other considerations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+breaks = 20; % how many trials inbetween breaks?
+count_blocks = 0;
+button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%% SET UP PSYCHTOOLBOX THINGS
@@ -216,22 +204,12 @@ end
 % set up screens and mex
 KbCheck;
 KbName('UnifyKeyNames');
-if stage == 3 % setup to collect keyboard responses on multitask trials
-
-    mt.resp_key_idx = KbName({'z','x'}); % also use this to score whether
-    % the mt resp was correct or incorrect - (using col 10 of the trials
-    % matrix)
-    key_flags = zeros(1,256); % an array of zeros
-    key_flags(mt.resp_key_idx)=1; % monitor only spaces
-    KbQueueCreate([],key_flags);
-end
-
 GetSecs;
 AssertOpenGL
 if where == 1 || where == 2
     Screen('Preference', 'SkipSyncTests', 1); %%%% only for debug mode!
     Screen('Preference', 'ConserveVRAM', 64); %%%% only for debug mode!
-    %PsychDebugWindowConfiguration;
+    PsychDebugWindowConfiguration;
 end
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
@@ -273,11 +251,8 @@ r = doorPix/2; % radius is the distance from center to the edge of the door
 time.ifi = Screen('GetFlipInterval', window);
 time.frames_per_sec = round(1/time.ifi);
 time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
-time.mt_stim_on = .2; % how long we'll keep the multitasking stimulus on
-time.mt_time_out = 3; % how many seconds until mt time out
-time.mt_time_out_frames = time.mt_time_out*time.frames_per_sec;
-time.tgt_dur = .15; % how long we'll keep the search target on for
-time.wait_frames = 1; % how many frames to wait before flipping
+time.tgt_on = .5; % 500 msec
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -311,13 +286,19 @@ PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
 SetMouse(xCenter, yCenter, window);
 
 % things to collect during the experiment
-if stage == 1 
+if stage == 1 || stage == 3
     moves_record = [];
     moves_goal = 4;
 end
 tpoints = sub.tpoints;
+door_off_ts = []; % collect the times people turned doors off
+door_on_ts = []; % this will collect the times people turned the doors on
+door_idx_trialn = []; % collect the trial numbers that each collection of rts
+% belong to
+
 
 for count_trials = 1:length(trials(:,1))
+
  
     if count_trials == 1
         run_instructions(window, screenYpixels, stage, house);
@@ -331,59 +312,33 @@ for count_trials = 1:length(trials(:,1))
     tgt_loc = trials(count_trials, 3);
     tgt_flag = tgt_loc; %%%% where is the target
     door_select_count = 0; % track how many they got it in
-    
+
     % set context colours according to condition
     edge_col = context_cols(trials(count_trials, 2), :); % KG: select whether it is context 1 or 2
-
-    if stage < 3 || ~ trials(count_trials,9) % if its not the mt session or trial then disable mt functions
-        mt.on = 0;
-        mt.on_now = 0;
-        mt.start = 0;
-        mt.bait = 0;  % strictly mt_on = 0 should deactivate use of bait, loc & tgt_id
-        mt.loc = 0;   % but being safe/setting to NaN/zero for debug purposes
-        mt.tgt_id = 0;
-        mt.stim_dur = 0;
-
-    else
-
-        mt.on = 1; % implement multitasking functions
-        mt.on_now = 0; % this signals ...
-        mt.start = 0;
-        mt.bait = trials(count_trials,6);  % if participant responds on door x then show the mt target
-        mt.loc = trials(count_trials, 7); % show the mt target here
-        mt.tgt_id = trials(count_trials, 8);
-        mt.stim_dur = time.mt_stim_on; % how long to keep the mt target on the screen
-        KbQueueStart(); % start polling for the multitasking task
-        KbReleaseWait(); % make sure the keyboard queue is clear before continuing
-    end
-
+           
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%% run trial
     tgt_found = 0;
-    mt.happened = 0
-
+   
     % draw doors and start
     draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
     draw_background(window, backRect, xCenter, yCenter, col);
     draw_doors(window, doorRects, doors_closed_cols);
-
-    if mt.on
-        if ~mt.bait
-            draw_mt_tgt(window,doorRects,mt.loc,mt.tgt_id);
-        end
+    if count_trials == 1
+        trial_start = Screen('Flip', window); % KG: changed for flexi to track
+        % time across whole experiment, rather than timings trial by trial,
+        % to make sure we were capturing data across time (not losing
+        % things between trials)
+    else 
+        Screen('Flip', window);
     end
-    trial_start = Screen('Flip', window); % use this time to determine the time of target onset
-    if mt.on
-        if ~mt.bait
-            mt.start = trial_start; % so can work out when to 
-            mt.happened = 1
-            sprintf('bait was zero')
-        end
-    end
-
+    
     while ~any(tgt_found)
         
+
         door_on_flag = 0; % poll until a door has been selected
+        door_off_ts = [door_off_ts, GetSecs]; % for providing feedback
+        door_idx_trialn = [door_idx_trialn, count_trials];
         while ~any(door_on_flag) 
             
             % poll what the mouse is doing, until a door is opened
@@ -396,11 +351,12 @@ for count_trials = 1:length(trials(:,1))
                                                                 tgt_flag, ...
                                                                 xPos, yPos, ...
                                                                 r, door_ps(trials(count_trials,2), :), trial_start, ...
-                                                                button_idx, time.context_cue_on, mt);
+                                                                button_idx, time.context_cue_on);
 
         end
-
+        
         door_select_count = door_select_count + 1;
+        door_on_ts = [door_on_ts, GetSecs]; % for providing feedback
         
         % door has been selected, so open it
         while any(door_on_flag) 
@@ -409,14 +365,6 @@ for count_trials = 1:length(trials(:,1))
            % function, if the target is at the location of the selected
            % door
             
-           % do we need to start polling the time to display an mt
-           % stimulus?
-           if mt.on && didx == mt.bait
-               if ~mt.happened 
-                    mt.start = GetSecs;
-                    mt.happened = 1;
-               end
-           end
             % didx & tgt_flag info are getting here
             [tgt_found, didx, door_on_flag] = query_open_door(trial_start, sub.num, sub.stage, ...
                                                               count_trials, trials(count_trials,2), ...
@@ -425,11 +373,12 @@ for count_trials = 1:length(trials(:,1))
                                                               backRect, edgeRect, xCenter, yCenter, edge_col, col, ...
                                                               doorRects, doors_closed_cols, ...
                                                               door_open_col,...
-                                                              didx, beh_fid, beh_form, x, y, button_idx, time.context_cue_on, ...
-                                                              mt);
+                                                              didx, beh_fid, beh_form, x, y, button_idx, time.context_cue_on);
 
         end
     end % end of trial
+
+
     
     % KG: MFORAGE: this feedback code may move dependening on other learning stages
     if stage < 3
@@ -446,92 +395,32 @@ for count_trials = 1:length(trials(:,1))
         feedback_on = 0;
     end
 
+    tgt_start = GetSecs;
+    
     [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
                         doorRects, doors_closed_cols, didx, ...
                         trials(count_trials,5), xCenter, yCenter, time.context_cue_on, ...
                         trial_start, door_select_count, feedback_on, ...
-                        screenYpixels, coin_handles);
-        [~,~,buttons] = GetMouse(window);
-    while buttons(button_idx)
-        [~,~,buttons] = GetMouse(window); % check target has been released before moving on
+                        coin_handles);
+    %%%%% KG task switching - add a loop that leaves the target on 
+    %%%%% for 500 msec, and polls the mouse during that time
+    while (GetSecs - tgt_on) < time.tgt_on % leave the target on for 500 ms
+        % but poll the mouse
+        WaitSecs(.015); % to mirror sample rate during the trials
+        post_tgt_response_poll(window, trial_start, ...
+                                xPos, yPos, r, door_ps(trials(count_trials,2), :),...
+                                beh_fid, beh_form, sub.num,...
+                                sub.stage, count_trials, trials(count_trials,2), ...
+                                tgt_flag)
     end
-    % keep the target on for another 150 msec before switching to the blank
-    % door display
-    WaitSecs(time.tgt_dur);
-    
-    % of next door
+
+    %     [~,~,buttons] = GetMouse(window); % old code which just waited
+    %     for mouse release
+    % while buttons(button_idx)
+    %     [~,~,buttons] = GetMouse(window);
+    % end
+
     tpoints = tpoints + points;
-
-    % okies, now present the blank doors and poll the mouse location
-    % until a response, if required
-
-    % if the multitasking task happened, poll the keyboard until the
-    % response to the task is made, at the same time, present the unopened
-    % doors and poll for a response
-    if mt.happened % did we present a mt stim?
-        mt.resp_detect = 0;
-        mt.start_poll = GetSecs;
-        mt_resp_poll = Screen('Flip', window);
-
-        while ~mt.resp_detect %|| (GetSecs - mt.start_poll) < time.mt_time_out
-    
-
-            % do a single poll of the 
-            [pressed, first_press]=KbQueueCheck(); % first press is an array indicating the time
-            % that each key was first pressed
-            if any(first_press(mt.resp_key_idx))
-                pressed_idx = find(first_press); % get the idx for non-zero elements of first press
-                time_pressed = min(first_press(pressed_idx)); % get time of first response
-                key_pressed = KbName(min(find(first_press))); % get which key was pressed
-
-                mt.resp_detect = 1;
-            end
-
-
-            draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
-            draw_background(window, backRect, xCenter, yCenter, col);
-            draw_doors(window, doorRects, doors_closed_cols);
-
-            query_mouse_resp(window,button_idx,xPos,yPos,r,door_ps(trials(count_trials,2), :),...
-                                    beh_fid,beh_form,sub.num,stage, count_trials,...
-                                    trials(count_trials,2), trial_start, tgt_flag);
-
-            mt_resp_poll = Screen('Flip', window, mt_resp_poll + ...
-                (time.wait_frames - 0.5) * time.ifi);
-        end
-        % make sure to add nan's to the behavioural log file if this
-        % eventuality happens (aka the poll timed out before a response)
-    end
-    if stage == 3 && mt.happened
-        KbQueueFlush()
-    end
-    if stage == 3
-        % record the multitasking events to the behavioural log file
-        if mt.happened
-            if mt.resp_detect% response happened
-                fprintf(mt_beh_fid, mt_beh_form, sub.num, ...
-                    sub.stage, count_trials, trials(count_trials,2), ...
-                    trials(count_trials,6), trials(count_trials,7),...
-                    trials(count_trials,8), mt.start, time_pressed, ...
-                    time_pressed-mt.start, trials(count_trials,10),...
-                    key_pressed); 
-            else % if timed out
-                fprintf(mt_beh_fid, mt_beh_form, sub.num, ...
-                    sub.stage, count_trials, trials(count_trials,2), ...
-                    trials(count_trials,6), trials(count_trials,7),...
-                    trials(count_trials,8), NaN, NaN, ...
-                    NaN, trials(count_trials,10),...
-                    NaN);
-            end
-        else
-           fprintf(mt_beh_fid, mt_beh_form, sub.num, ...
-               sub.stage, count_trials, trials(count_trials,2), ...
-               trials(count_trials,6), trials(count_trials,7),...
-               trials(count_trials,8), NaN, NaN, ...
-               NaN, trials(count_trials,10),...
-               NaN); 
-        end
-    end
 
     if stage == 1 && house == 1 && count_trials == n_practice_trials
 
@@ -544,8 +433,15 @@ for count_trials = 1:length(trials(:,1))
     else
         if count_trials == n_practice_trials
         else
+            
+            feedback = get_performance_feedback(door_off_ts, door_on_ts,...
+                        door_idx_trialn, ...
+                        moves_record, ...
+                        count_trials, breaks, stage);
             take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
-                breaks, backRect, xCenter, yCenter, screenYpixels, tpoints, stage);
+                        breaks, backRect, xCenter, yCenter, screenYpixels, ...
+                        tpoints, stage,...
+                        feedback);
             KbWait;
         end
         WaitSecs(1);
@@ -568,15 +464,12 @@ if stage == 1 && house < 9
             break
         end
     end
-elseif stage == 1 && house == 9
+elseif stage == 1 && house == 9 || stage == 3
 
     moves_record = [moves_record, door_select_count];
 end % end stage 1 response tally
     
 end
-
-
-KbQueueRelease();
 
 sca;
 Priority(0);

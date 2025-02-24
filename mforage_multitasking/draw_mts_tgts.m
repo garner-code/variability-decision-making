@@ -1,4 +1,4 @@
-function [points, tgt_on] = draw_mts_tgts(window, edgeRect, backRect, ...
+function [] = draw_mts_tgts(window, edgeRect, backRect, ...
     edgeCol, backCol, doorRects, doorCol,...
     xCenter, yCenter, tgtLocs, tgtIDs, trial_start)
 % this function gets the 3 targets from tgtIDs and draws them in tgtLocs
@@ -33,7 +33,7 @@ draw_background(window, backRect, xCenter, yCenter, backCol);
 draw_doors(window, doorRects, doorCol);
 im_rects = doorRects(:, tgtLocs);
 Screen('DrawTextures', window, tex, [], im_rects);
-% draw targets
-tgt.vbl = Screen('Flip', window);
-tgt_on = tgt.vbl;
+% % draw targets
+% tgt.vbl = Screen('Flip', window);
+% tgt_on = tgt.vbl;
 end

@@ -5,3 +5,5 @@
 3. how many trials for working memory task?
 4. working memory task - 3 locations or 2?
 5. border colours during working memory task?
+6. which keys to use to make 'same' or 'different' responses on the memory task? how to randomise/counterbalance across participants?
+7. Break info/messages?

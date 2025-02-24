@@ -89,15 +89,19 @@ nmts_tgts = 100; % how many to choose from overall
 %%%%%%%%%%%%%%%%%%%%% SET UP PSYCHTOOLBOX THINGS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up screens and mex
+
+%----------------------------------------------------------------------
+%                       Keyboard information
+%----------------------------------------------------------------------
 KbCheck;
 KbName('UnifyKeyNames');
 % setup to collect keyboard responses 
-mt.resp_key_idx = KbName({'z','x'}); % also use this to score whether
-% the mt resp was correct or incorrect - (using col 10 of the trials
-% matrix)
-key_flags = zeros(1,256); % an array of zeros
-key_flags(mt.resp_key_idx)=1; % monitor only spaces
-KbQueueCreate([],key_flags);
+resp.same = KbName('DownArrow');
+resp.diff = KbName('RightArrow');
+
+%----------------------------------------------------------------------
+%                       screen/stimuli etc
+%----------------------------------------------------------------------
 
 GetSecs;
 AssertOpenGL
@@ -147,7 +151,10 @@ time.frames_per_sec = round(1/time.ifi);
 time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
 time.tgts_on = .5; % how long we'll keep the target stimuli on
 time.mem_period = 2;
-time.probes_time_out = 2; % how many seconds until time out on the working memory task
+%time.probes_time_out = 2; % how many seconds until time out on the working memory task
+time.feedback_on = 1;
+frames.tgt_on_frames = round(time.tgts_on/time.ifi); % how many frames to keep tgts on for
+frames.mem_period = round(time.mem_period/time.ifi);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%% now we're ready to run through the experiment
@@ -170,20 +177,55 @@ for count_trials = 1:length(trials(:,1))
     tgt_ids = datasample(1:nmts_tgts,length(tgt_locs));
     % set context colours according to condition
     edge_col = context_cols(1,:); 
-
+  
     % draw targets and start
-    tgts_on = draw_mts_tgts(window, edgeRect, backRect, ...
+    draw_mts_tgts(window, edgeRect, backRect, ...
                     edge_col, col, doorRects, doors_closed_cols,...
                     xCenter, yCenter, tgt_locs, tgt_ids, trial_start);
-    while (GetSecs - tgts_on) < time.tgts_on
-    end
+    tgts_on = Screen('Flip', window);
 
-    % draw doors closed
+    % draw doors closed and present at the end of the memory delay period
     draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
     draw_background(window, backRect, xCenter, yCenter, col);
     draw_doors(window, doorRects, doors_closed_cols);
+    mem_delay_on = Screen('Flip', window, tgts_on + (frames.tgt_on_frames - 0.5) * time.ifi);
     
+    % now present the targets at the probe locations at the end of the
+    % period
+    draw_mts_tgts(window, edgeRect, backRect, ...
+                    edge_col, col, doorRects, doors_closed_cols,...
+                    xCenter, yCenter, prb_locs, tgt_ids, trial_start);
+    prbs_on = Screen('Flip', window, mem_delay_on + (frames.mem_period - 0.5) * time.ifi);
 
+    % now poll for the response
+    waiting_for_resp = 1;
+    vbl = prbs_on;
+    resp_waitframes = 1;
+    while waiting_for_resp
+
+        draw_mts_tgts(window, edgeRect, backRect, ...
+            edge_col, col, doorRects, doors_closed_cols,...
+            xCenter, yCenter, prb_locs, tgt_ids, trial_start);
+
+        [key_down,secs, key_code] = KbCheck;
+        if key_code(resp.same)
+            
+            sub_resp = 0;
+            waiting_for_resp = 0;
+        elseif key_code(resp.diff)
+
+            sub_resp = 1;
+            waiting_for_resp = 0;
+        end
+        vbl = Screen('Flip', window, vbl + (resp_waitframes - 0.5) * time.ifi);
+    end
+    rt = secs - prbs_on;
+
+    memory_feedback(window, screenYpixels);
+    feedback_on = Screen('Flip', window);
+    WaitSecs(time.feedback_on);
+    
 end
 
     
+sca

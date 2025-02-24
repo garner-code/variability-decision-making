@@ -46,8 +46,9 @@ end
 
 sub.num = input('sub number? ');
 sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
-sub.tpoints = input('points? '); % enter points scored so far
-sub.experiment = 'flex';
+%sub.tpoints = input('points? '); % enter points scored so far
+sub.tpoints = 0;
+sub.experiment = 'mt';
 
 exp_code = sub.experiment;
 sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
@@ -74,12 +75,18 @@ load('sub_infos.mat'); % matrix of counterbalancing info
 sub_config = sub_infos(sub.num, :);
 
 if stage == 1
-    sub.house = input('house number? 1 or 2 or 9 '); % 1 for the first house, 2 for house 2, 9 to go through both
+    sub.house = input('house number? 1 or 2 '); % 1 for the first house, 2 for house 2, 9 to go through both
     house = sub.house;
 else
     house = 0; % not relevant because we are mixing up the houses, so set to zero
 end
 [beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code, house); % this is the behaviour and the events log
+
+if stage == 3
+
+    [mts_form, mts_fid] = initiate_sub_beh_mts_file(sub.num, sub_dir, ...
+                                                ses_str, exp_code);
+end
 
 % probabilities of target location and number of doors
 load('probs_cert_world_v2.mat'); % this specifies that there are 4 doors with p=0.25 each 
@@ -87,16 +94,10 @@ door_probs   = probs_cert_world;
 clear probs_cert_world 
 
 % KG: MFORAGE: will change the below
-if stage == 1 && house < 9% if its initial learning
+if stage == 1 
 
     n_practice_trials = 5;
     ntrials = 200; % KG: MFORAGE - max per context
-    [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house); 
-
-elseif stage == 1 && house == 9
-
-    n_practice_trials = 0;
-    ntrials = 80; % KG: MFORAGE - max per context
     [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house); 
 
 elseif stage == 2
@@ -122,9 +123,20 @@ elseif stage == 2
 elseif stage == 3
     
     n_practice_trials = 0;
-    ntrials = 4*20;
-    switch_prob = .5;
-    [trials, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_config, door_probs, switch_prob);
+    ntrials = 120; % 80 in each context - have 40 performed w a memory probe
+    % and 40 without - that leaves 20 for each condition
+    switch_prob = 1;
+    [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
+    nmts_trials = 8; % number of trials from contexts 1, 2, 3, and 4 - i.e. n is multiplied by 4
+    mts_trials = generate_trial_structure_mts(nmts_trials, sub_config);    
+    
+    % now combine for one matrix that codes all the things
+    n_trials_between_mem_probe = [4 4 4 4 6 6 6 6]; % memory task will have this many intervening search trials
+    trials = allocate_dual_task_trials(trials, n_trials_between_mem_probe);
+    % KG: U2H = now I should be able to join the mts_trials to the trials,
+    % and use the whole matrix to control the task
+
+
 end
 
 if stage == 1

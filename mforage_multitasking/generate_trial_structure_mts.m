@@ -12,7 +12,7 @@ function trials = generate_trial_structure_mts(ntrials, sub_config)
 % context = 1, 2, or 3, where 3 is neither
 % cresp = 0 or 1, 0 = same, 1 = different
 trials = zeros(ntrials*4, 9);
-trials(:,1) = 1:ntrials*4;
+%trials(:,1) = 1:ntrials*4;
 trials(:,2) = repelem([1,2,3,4],ntrials);
 trials(:,3) = repmat(repelem([0,1], ntrials/2), 1, 4);
 
@@ -52,5 +52,10 @@ trials(trials(:,2) == 4,4:6) = cd_doors;
 % doors, for those with a 0, swap the order of two of the doors
 trials(trials(:,3) == 0, 7:9) = trials(trials(:,3) == 0, 4:6);
 trials(trials(:,3) == 1, 7:9) = trials(trials(:,3) == 1, [5,4,6]);
+
+% now take the trials and shuffle the order of the rows
+row_shuff_idx = randperm(size(trials,1));
+trials = trials(row_shuff_idx, :);
+trials(:,1) = 1:size(trials(1));
 
 end

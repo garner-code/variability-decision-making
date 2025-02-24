@@ -41,6 +41,7 @@ sub.tpoints = 0; % enter points scored so far
 sub.experiment = 'mt';
 exp_code = sub.experiment;
 sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
+ses_str = 'mts';
 
 % get sub info for setting up counterbalancing etc
 % sub infos is a matrix with the key info for locations for running the 
@@ -60,7 +61,9 @@ load('sub_infos.mat'); % matrix of counterbalancing info
 % see generate_sub_info_mat for details
 sub_config = sub_infos(sub.num, :);
 
-%%%%%%%%%%%%%% K.G. add code for collecting behavioural data
+[mts_form, mts_fid] = initiate_sub_beh_mts_file(sub.num, sub_dir, ...
+                                                ses_str, exp_code);
+
 ntrials = 4; % per context, note that neither context trials are double 
 % this number
 trials = generate_trial_structure_mts(ntrials, sub_config);
@@ -221,11 +224,32 @@ for count_trials = 1:length(trials(:,1))
     end
     rt = secs - prbs_on;
 
-    memory_feedback(window, screenYpixels);
+    memory_feedback(window, sub_resp, trials(count_trials, 3), screenYpixels);
     feedback_on = Screen('Flip', window);
     WaitSecs(time.feedback_on);
-    
+
+    % update trial info into log file
+    fprintf(mts_fid, mts_form, sub.num, stage, count_trials, ...
+              trials(count_trials,2), tgts_on, prbs_on, sub_resp, ...
+              trials(count_trials, 3), rt);
+
 end
 
-    
+fclose(mts_fid);
+
+end_text = 'This is the end! Press any key to continue...';
+Screen('TextStyle', window, 1);
+Screen('TextSize', window, 30);
+DrawFormattedText(window, end_text, 'Center', screenYpixels*.1, [0 0 255]);
+Screen('Flip', window);
+
+waiting = 1;
+while waiting
+    [key_down, ~, ~] = KbCheck;
+    if key_down
+        waiting = 0;
+    end
+end
+
+
 sca

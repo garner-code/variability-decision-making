@@ -2,8 +2,12 @@ function [trlg_fid] = write_trials_and_params_MTS(sub, stage, exp_code, ...
     sub_dir, trials)
 
 % write a record of the trials and various params for the MTS trials for the subject
+if stage == 4
+    ses_str = 'mts';
+elseif stage == 3
+    ses_str = 'test';
+end
 
-ses_str = 'mts';
 if sub < 10
     trlfname   = sprintf('sub-0%d_ses-%s_task-mts_trls.tsv', sub, ses_str);
 else

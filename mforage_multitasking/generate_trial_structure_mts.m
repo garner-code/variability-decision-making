@@ -56,6 +56,6 @@ trials(trials(:,3) == 1, 7:9) = trials(trials(:,3) == 1, [5,4,6]);
 % now take the trials and shuffle the order of the rows
 row_shuff_idx = randperm(size(trials,1));
 trials = trials(row_shuff_idx, :);
-trials(:,1) = 1:size(trials(1));
+trials(:,1) = 1:size(trials(:,1));
 
 end

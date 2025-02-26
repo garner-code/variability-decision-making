@@ -41,15 +41,9 @@ fclose(trlg_fid);
 % if its a multitasking session then save the multitask parameters to a
 % separate file
 if size(trials,2) > 5 % then there is extra info we need to save
-   mt_cols2save = [1, 6:8, 10];
-      % col 1 = trial number
-      % col 6 = when mt should come on, if coming on
-      % col 7 = mt location 
-      % col 8 = tgt for mt task
-      % col 9 = mt trial (1 for yes, 0 for no) % all yes, so not needed
-      % col 10 = correct response for the multitask trials
+   mt_cols2save = [1, 2, 6:8];
    mt_trlg_fid = fopen([sprintf('exp_%s', exp_code), '/', sub_dir, sprintf('/ses-%s', ses_str), '/beh/' mt_trlfname], 'w');
-   fprintf(mt_trlg_fid, '%s\t%s\t%s\t%s\t%s\t%s\t%s\n', 'sub','sess','t','mt_bait','mt_loc','mt_tgt_id','mt_tgt_type');
+   fprintf(mt_trlg_fid, '%s\t%s\t%s\t%s\t%s\t%s\t%s\n', 'sub','sess','t','context','mem_tgt_trial','mem_probe_trial','mem_context');
    fprintf(mt_trlg_fid, '%d\t%d\t%d\t%d\t%d\t%d\t%d\n', [repmat(sub, 1, length(trials(:,1)))', repmat(stage, 1, length(trials(:,1)))', trials(:,mt_cols2save)]');
    fclose(mt_trlg_fid);
 end

@@ -8,3 +8,4 @@
 6. which keys to use to make 'same' or 'different' responses on the memory task? how to randomise/counterbalance across participants?
 7. Break info/messages?
 8. Enough trials between memory probes? or too many?
+9. 

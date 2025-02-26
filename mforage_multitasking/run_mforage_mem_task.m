@@ -85,7 +85,7 @@ end
 if stage == 3
 
     [mts_form, mts_fid] = initiate_sub_beh_mts_file(sub.num, sub_dir, ...
-                                                ses_str, exp_code);
+                                                stage, exp_code);
 end
 
 % probabilities of target location and number of doors
@@ -129,13 +129,33 @@ elseif stage == 3
     [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
     nmts_trials = 8; % number of trials from contexts 1, 2, 3, and 4 - i.e. n is multiplied by 4
     mts_trials = generate_trial_structure_mts(nmts_trials, sub_config);    
-    
+    % outcome matrix of this is:
+    % col 1 = row number
+    % col 2 = context
+    % col 3 = same (0) or different (1) targets
+    % cols 4:6 = locations for mem display
+    % cols 7:9 = locations for probe display
+    % just sort mts trials as we don't need the trials shuffled in this
+    % stage (we go with the shuffling in trials and call mts_trials when
+    % needed)
+    mts_trials = sortrows(mts_trials, 2);
+    mts_trials(:,1) = 1:size(mts_trials, 1);
+    % now sort the contexts into cells, for ease of reference
+    mts_trials_cell = {};
+    for i_mts = 1:max(mts_trials(:,2)) % dependent on consecutive numbering of contexts
+        mts_trials_cell{i_mts} = mts_trials(mts_trials(:,2) == i_mts, :);
+    end
+    mts_ref_tgt_locs = 4:6;
+    mts_ref_prb_locs = 7:9;
+    mts_ref_cresp = 3;
     % now combine for one matrix that codes all the things
     n_trials_between_mem_probe = [4 4 4 4 6 6 6 6]; % memory task will have this many intervening search trials
     trials = allocate_dual_task_trials(trials, n_trials_between_mem_probe);
-    % KG: U2H = now I should be able to join the mts_trials to the trials,
-    % and use the whole matrix to control the task
-
+    % this returns the trials matrix (taken from
+    % generate_trial_structure_train) and adds two columns. The first new
+    % column indicates if memory targets should be presented. The second
+    % says if the memory probe should be presented. The last tells you
+    % which context the memory locations should come
 
 end
 
@@ -165,6 +185,11 @@ end
 
 write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
     door_probs, sub_config, door_ps, sub_dir, house);
+
+if stage == 3
+    write_trials_and_params_MTS(sub.num, stage, exp_code, ...
+                                sub_dir, mts_trials)
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
@@ -209,6 +234,17 @@ end
 breaks = 20; % how many trials inbetween breaks?
 count_blocks = 0;
 button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
+
+if stage == 3
+%----------------------------------------------------------------------
+%                       Keyboard information
+%----------------------------------------------------------------------
+KbCheck;
+KbName('UnifyKeyNames');
+% setup to collect keyboard responses 
+resp.same = KbName('DownArrow');
+resp.diff = KbName('RightArrow');
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%% SET UP PSYCHTOOLBOX THINGS
@@ -263,7 +299,12 @@ r = doorPix/2; % radius is the distance from center to the edge of the door
 time.ifi = Screen('GetFlipInterval', window);
 time.frames_per_sec = round(1/time.ifi);
 time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
-time.tgt_on = .5; % 500 msec
+time.tgts_on = 2; % how long we'll keep the target stimuli on
+time.mem_period = 2;
+%time.probes_time_out = 2; % how many seconds until time out on the working memory task
+time.feedback_on = 1;
+frames.tgt_on_frames = round(time.tgts_on/time.ifi); % how many frames to keep tgts on for
+frames.mem_period = round(time.mem_period/time.ifi);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
@@ -303,10 +344,13 @@ if stage == 1 || stage == 3
     moves_goal = 4;
 end
 tpoints = sub.tpoints;
+% performance feedback items
 door_off_ts = []; % collect the times people turned doors off
 door_on_ts = []; % this will collect the times people turned the doors on
 door_idx_trialn = []; % collect the trial numbers that each collection of rts
 % belong to
+counting_mem_trls = zeros(1,max(mts_trials(:,2))); % this will serve as a 
+% counter through the memory trials from each context
 
 
 for count_trials = 1:length(trials(:,1))
@@ -327,7 +371,12 @@ for count_trials = 1:length(trials(:,1))
 
     % set context colours according to condition
     edge_col = context_cols(trials(count_trials, 2), :); % KG: select whether it is context 1 or 2
-           
+    
+    % memory settings for this trial
+    mem_tgts = trials(count_trials, 6);
+    mem_prb = trials(count_trials, 7);
+    mem_cntxt = trials(count_trials, 8);
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%% run trial
     tgt_found = 0;
@@ -337,14 +386,40 @@ for count_trials = 1:length(trials(:,1))
     draw_background(window, backRect, xCenter, yCenter, col);
     draw_doors(window, doorRects, doors_closed_cols);
     if count_trials == 1
-        trial_start = Screen('Flip', window); % KG: changed for flexi to track
+        trial_start = Screen('Flip', window); % KG: changed for flexi/multi to track
         % time across whole experiment, rather than timings trial by trial,
         % to make sure we were capturing data across time (not losing
         % things between trials)
     else 
         Screen('Flip', window);
     end
-    
+
+    % is it a trial on which to present memory targets? if so, present
+    if mem_tgts
+        %WaitSecs() add this if needed
+        counting_mem_trls(mem_cntxt) = counting_mem_trls(mem_cntxt) + 1;
+        % get target and probe locations for this trial
+        tgt_locs = mts_trials_cell{mem_cntxt}...
+            (counting_mem_trls(mem_cntxt),mts_ref_tgt_locs);
+        % get some target identities
+        tgt_ids = datasample(1:nmts_tgts,length(tgt_locs));
+
+        mem_cresp = mts_trials_cell{mem_cntxt}...
+            (counting_mem_trls(mem_cntxt),mts_ref_cresp);
+
+        % draw targets and start
+        draw_mts_tgts(window, edgeRect, backRect, ...
+                        edge_col, col, doorRects, doors_closed_cols,...
+                        xCenter, yCenter, tgt_locs, tgt_ids, trial_start);
+        tgts_on = Screen('Flip', window);
+
+        % draw doors closed and present at the start of the memory delay period
+        draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on);
+        draw_background(window, backRect, xCenter, yCenter, col);
+        draw_doors(window, doorRects, doors_closed_cols);
+        mem_delay_on = Screen('Flip', window, tgts_on + (frames.tgt_on_frames - 0.5) * time.ifi);
+    end
+
     while ~any(tgt_found)
         
 
@@ -390,9 +465,7 @@ for count_trials = 1:length(trials(:,1))
         end
     end % end of trial
 
-
-    
-    % KG: MFORAGE: this feedback code may move dependening on other learning stages
+    % feedback
     if stage < 3
         if stage == 1 
             feedback_on = 1;
@@ -414,7 +487,7 @@ for count_trials = 1:length(trials(:,1))
                         trials(count_trials,5), xCenter, yCenter, time.context_cue_on, ...
                         trial_start, door_select_count, feedback_on, ...
                         coin_handles);
-    %%%%% KG task switching - add a loop that leaves the target on 
+    %%%%% add a loop that leaves the target on 
     %%%%% for 500 msec, and polls the mouse during that time
     while (GetSecs - tgt_on) < time.tgt_on % leave the target on for 500 ms
         % but poll the mouse
@@ -426,11 +499,30 @@ for count_trials = 1:length(trials(:,1))
                                 tgt_flag)
     end
 
-    %     [~,~,buttons] = GetMouse(window); % old code which just waited
-    %     for mouse release
-    % while buttons(button_idx)
-    %     [~,~,buttons] = GetMouse(window);
-    % end
+    % now if its a mem probe trial, get the probe locations and draw
+    if mem_prb
+        % get the memory probe locations
+        prb_locs = mts_trials_cell{mem_cntxt}...
+            (counting_mem_trls(mem_cntxt),mts_ref_prb_locs);
+
+        draw_mts_tgts(window, edgeRect, backRect, ...
+            edge_col, col, doorRects, doors_closed_cols,...
+            xCenter, yCenter, prb_locs, tgt_ids, trial_start);
+        prbs_on = Screen('Flip', window);
+        % now poll for the response
+        [rt, sub_resp] = run_memory_probe(prbs_on,window, edgeRect, backRect, ...
+                                            edge_col, col, doorRects, ...
+                                            doors_closed_cols, ...
+                                            xCenter, yCenter, prb_locs,...
+                                            tgt_ids, trial_start, resp, ...
+                                            time);
+        
+        % update trial info into log file
+        fprintf(mts_fid, mts_form, sub.num, stage, count_trials, ...
+              mem_cntxt, tgts_on, prbs_on, sub_resp, ...
+              mem_cresp, rt);
+    
+    end
 
     tpoints = tpoints + points;
 

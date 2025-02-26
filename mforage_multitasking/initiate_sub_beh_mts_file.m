@@ -1,8 +1,12 @@
 function [beh_form, beh_fid] = initiate_sub_beh_mts_file(sub, sub_dir, ...
-                                                           ses_str, exp_code)
+                                                           stage, exp_code)
 % generate a file that will collect the trial event info for the
 % multitasking task
-ses_str = ses_str;
+if stage == 4
+    ses_str = 'mts';
+elseif stage == 3
+    ses_str = 'test';
+end
 if sub < 10
     fname   = sprintf('sub-0%d_ses-%s_task-mts_beh.tsv', ...
         sub, ses_str);

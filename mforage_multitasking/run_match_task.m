@@ -26,7 +26,7 @@ clear mex
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % session settings
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-where = 1; % if 0, in lab, if 1, in office, if 2, at home
+where = 0; % if 0, in lab, if 1, in office, if 2, at home
 
 % make .json files functions to be written
 %%%%%% across participants
@@ -62,7 +62,7 @@ load('sub_infos.mat'); % matrix of counterbalancing info
 sub_config = sub_infos(sub.num, :);
 
 [mts_form, mts_fid] = initiate_sub_beh_mts_file(sub.num, sub_dir, ...
-                                                ses_str, exp_code);
+                                                stage, exp_code);
 
 ntrials = 4; % per context, note that neither context trials are double 
 % this number

@@ -475,6 +475,7 @@ sca;
 Priority(0);
 PsychPortAudio('Close');
 Screen('CloseAll');
+fclose('all');
 
 sprintf('total points = %d', tpoints)
 if stage == 1 && house < 9 &&  ~go

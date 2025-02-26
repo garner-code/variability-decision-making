@@ -6,7 +6,7 @@ function [didx, door_on_flag, x, y] = query_door_select(door_on_flag, ...
     trial_n, cond, tgt_flag, ...
     xPos, yPos, ...
     r, door_probs, trialStart, ...
-    button_idx, context_on, mt)
+    button_idx, context_on)
 
 % DESC: this code will continuously check whether a participant
 % has selected a door by clicking the left mouse button
@@ -27,28 +27,17 @@ tmp_door_cols = doorClosedCol;
 draw_edge(window, edgeRect, xCenter, yCenter, edgeCol, trialStart, context_on);
 draw_background(window, backRect, xCenter, yCenter, backCol);
 draw_doors(window, doorRects, tmp_door_cols);
-if mt.on
-    if (GetSecs - mt.start) < mt.stim_dur
-        draw_mt_tgt(window,doorRects,mt.loc,mt.tgt_id)
-    end
-end
 Screen('DrawingFinished', window);
 vbl = Screen('Flip', window);
 
 while ~any(start_test)
-
+    tmp_flag = 0;
     draw_edge(window, edgeRect, xCenter, yCenter, edgeCol, trialStart, context_on);
     draw_background(window, backRect, xCenter, yCenter, backCol);
     draw_doors(window, doorRects, tmp_door_cols);
-    if mt.on
-        if (GetSecs - mt.start) < mt.stim_dur
-            draw_mt_tgt(window,doorRects,mt.loc,mt.tgt_id)
-        end
-    end
     Screen('DrawingFinished', window);
     vbl = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi); % limit samples to flip rate
-    
-    tmp_flag = 0;
+
     [x,y,buttons] = GetMouse(window); % has the mouse been clicked
     timer = GetSecs - trialStart;
     % logic of this is that for as long as there has been no button press,
@@ -85,7 +74,7 @@ while ~any(start_test)
     end
    
     % collect the data from this sample
-    fprintf(fid, fform, sub, sess, trial_n, cond, timer, tmp_flag, didx, curr_door_prob, tgt_flag, 0, x, y);
+    fprintf(fid, fform, sub, sess, trial_n, cond, timer, tmp_flag, didx, curr_door_prob, tgt_flag, 0, x, y); % KG: MFORAGE: I HAVE ADJUSTED THIS FORMAT (BEH_FORM), NEED TO MATCH AGAINSTS SPECS
     if tmp_flag == 1
         door_on_flag = 1;
     end

@@ -305,7 +305,7 @@ time.tgts_on = 2; % how long we'll keep the target stimuli on
 time.mem_period = 2;
 %time.probes_time_out = 2; % how many seconds until time out on the working memory task
 time.feedback_on = 1;
-time.tgt_on = .5;
+time.tgt_on = .35;
 frames.tgt_on_frames = round(time.tgts_on/time.ifi); % how many frames to keep memory tgts on for
 frames.mem_period = round(time.mem_period/time.ifi);
 

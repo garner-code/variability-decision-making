@@ -26,7 +26,7 @@ clear mex
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % session settings
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-where = 0; % if 0, in lab, if 1, in office, if 2, at home
+where = 1; % if 0, in lab, if 1, in office, if 2, at home
 
 % make .json files functions to be written
 %%%%%% across participants
@@ -63,8 +63,9 @@ sub_config = sub_infos(sub.num, :);
 
 [mts_form, mts_fid] = initiate_sub_beh_mts_file(sub.num, sub_dir, ...
                                                 stage, exp_code);
-
-ntrials = 4; % per context, note that neither context trials are double 
+tgt_loc_idx = 4:7; % for calling the trial matrix during the task
+prb_loc_idx = 8:11;
+ntrials = 12; % per context, note that neither context trials are double 
 % this number
 trials = generate_trial_structure_mts(ntrials, sub_config);
 write_trials_and_params_MTS(sub.num, stage, exp_code, sub_dir, ...
@@ -99,8 +100,8 @@ nmts_tgts = 100; % how many to choose from overall
 KbCheck;
 KbName('UnifyKeyNames');
 % setup to collect keyboard responses 
-resp.same = KbName('DownArrow');
-resp.diff = KbName('RightArrow');
+resp.same = KbName('s');
+resp.diff = KbName('d');
 
 %----------------------------------------------------------------------
 %                       screen/stimuli etc
@@ -174,8 +175,8 @@ for count_trials = 1:length(trials(:,1))
     end
 
     % get target and probe locations for this trial
-    tgt_locs = trials(count_trials,4:6);
-    prb_locs = trials(count_trials,7:9);
+    tgt_locs = trials(count_trials,tgt_loc_idx);
+    prb_locs = trials(count_trials,prb_loc_idx);
     % get some target identities
     tgt_ids = datasample(1:nmts_tgts,length(tgt_locs));
     % set context colours according to condition

@@ -74,7 +74,7 @@ load('sub_infos.mat'); % matrix of counterbalancing info
 sub_config = sub_infos(sub.num, :);
 
 if stage == 1
-    sub.house = input('house number? 1 or 2 or 9 '); % 1 for the first house, 2 for house 2, 9 to go through both
+    sub.house = input('house number? 1 or 2 '); % 1 for the first house, 2 for house 2, 9 to go through both
     house = sub.house;
 else
     house = 0; % not relevant because we are mixing up the houses, so set to zero
@@ -251,7 +251,7 @@ r = doorPix/2; % radius is the distance from center to the edge of the door
 time.ifi = Screen('GetFlipInterval', window);
 time.frames_per_sec = round(1/time.ifi);
 time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
-time.tgt_on = .5; % 500 msec
+time.tgt_on = .35; % 350 msec - adjust this to adjust how long the target is on for
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
@@ -300,7 +300,7 @@ door_idx_trialn = []; % collect the trial numbers that each collection of rts
 for count_trials = 1:length(trials(:,1))
 
  
-    if count_trials == 1
+    if count_trials == 1 
         run_instructions(window, screenYpixels, stage, house);
         KbWait;
         WaitSecs(1); 
@@ -433,11 +433,15 @@ for count_trials = 1:length(trials(:,1))
     else
         if count_trials == n_practice_trials
         else
-            
+            if stage == 1 || stage == 3
             feedback = get_performance_feedback(door_off_ts, door_on_ts,...
                         door_idx_trialn, ...
                         moves_record, ...
                         count_trials, breaks, stage);
+            else
+                feedback.acc = 0;
+                feedback.rt = 0;
+            end
             take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
                         breaks, backRect, xCenter, yCenter, screenYpixels, ...
                         tpoints, stage,...

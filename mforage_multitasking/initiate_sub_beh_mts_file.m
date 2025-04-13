@@ -24,18 +24,20 @@ fprintf(beh_fid, '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n', ...
     'sub','stage','t','context','tgts_on','prbs_on','resp','cresp','rt');
 beh_form = '%d\t%d\t%d\t%d\t%f\t%f\t%d\t%d\t%.3f\n';
 
-% also, assign target categories to each task, and save the outcome
-n_categ = 4; % number of target categories
-tgt_alloc = randperm(n_categ);
-tgts.memory = tgt_alloc(1:2);
-tgts.search = tgt_alloc(3:4);
+if stage == 4
+    % also, assign target categories to each task, and save the outcome
+    n_categ = 4; % number of target categories
+    tgt_alloc = randperm(n_categ);
+    tgts.memory = tgt_alloc(1:2);
+    tgts.search = tgt_alloc(3:4);
 
-if sub < 10
-    save([sprintf('exp_%s', exp_code) '/' sub_dir '/' sprintf('sub-0%d_tgt_alloc.mat', sub)], 'tgts');
+    if sub < 10
+        save([sprintf('exp_%s', exp_code) '/' sub_dir '/' sprintf('sub-0%d_tgt_alloc.mat', sub)], 'tgts');
 
-else
-    save([sprintf('exp_%s', exp_code) '/' sub_dir '/' sprintf('sub-%d_tgt_alloc.mat', sub)], 'tgts');
+    else
+        save([sprintf('exp_%s', exp_code) '/' sub_dir '/' sprintf('sub-%d_tgt_alloc.mat', sub)], 'tgts');
+    end
+
+    mem_tgts = tgts.memory;
 end
-
-mem_tgts = tgts.memory;
 end

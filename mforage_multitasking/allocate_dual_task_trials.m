@@ -1,15 +1,12 @@
-function [trials] = allocate_dual_task_trials(search_trials, ...
+function [trials, n_trls_per_block] = allocate_dual_task_trials(search_trials, ...
                                                 n_trials_between_mem_probe)
-
-% what I need to do is create collections of trials
-% some that have 
 
 % add an extra two columns to search trials, the first denotes if there
 % should be a memory display at the start of the trial, and the second
 % denotes if there should be a probe at the end
 dt_strt_col = size(search_trials,2)+1;
 dt_end_col = dt_strt_col+1;
-mem_context_col = dt_end_col + 1;
+mem_context_col = dt_end_col+1;
 
 search_trials(:,[dt_strt_col, dt_end_col, mem_context_col]) = 0;
 
@@ -43,7 +40,22 @@ end
 
 % now randomise the order of the blocks
 n_blocks = length(collect_trial_blocks);
-collect_trial_blocks = reshape(collect_trial_blocks, 1, n_blocks*2);
-collect_trial_blocks = collect_trial_blocks(randperm(n_blocks*2));
-trials = cell2mat(collect_trial_blocks');
+% now randomly order the blocks on each row
+collect_trial_blocks(1,:) = collect_trial_blocks(1,randperm(n_blocks));
+collect_trial_blocks(2,:) = collect_trial_blocks(2,randperm(n_blocks));
+% now collate the sub blocks into bigger blocks of 6 subsets each
+n_subset_per_block = 6;
+strt_subsets = 1:n_subset_per_block:n_blocks;
+nd_subsets = n_subset_per_block:n_subset_per_block:n_blocks;
+subsets = cell(size(collect_trial_blocks,1), length(strt_subsets));
+for isub = 1:length(strt_subsets)
+   subsets{1, isub} = cat(1, collect_trial_blocks{1,strt_subsets(isub):nd_subsets(isub)});
+   subsets{2, isub} = cat(1, collect_trial_blocks{2,strt_subsets(isub):nd_subsets(isub)});
+end
+collect_subsets = reshape(subsets, 1, length(subsets)*2);
+collect_subsets = collect_subsets(randperm(length(subsets)*2));
+% get the number of rows before concatenating into trial matrix
+n_trls_per_block = arrayfun(@(x) size(x{:},1), collect_subsets);
+
+trials = cell2mat(collect_subsets');
 trials(:,1) = 1:size(trials,1);

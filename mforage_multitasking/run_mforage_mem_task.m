@@ -73,6 +73,16 @@ randstate = rand('state');
 load('sub_infos.mat'); % matrix of counterbalancing info
 % see generate_sub_info_mat for details
 sub_config = sub_infos(sub.num, :);
+% get which target catories belong to the search last
+if sub.num < 10
+    load([sprintf('exp_%s', exp_code) '/' sub_dir '/' ...
+        sprintf('sub-0%d_tgt_alloc.mat', sub.num)]);
+else
+    load([sprintf('exp_%s', exp_code) '/' sub_dir '/' ...
+        sprintf('sub-%d_tgt_alloc.mat', sub.num)]);
+end
+srch_tgts = tgts.search;
+mem_tgts = tgts.memory;
 
 if stage == 1
     sub.house = input('house number? 1 or 2 '); % 1 for the first house, 2 for house 2, 9 to go through both
@@ -83,7 +93,6 @@ end
 [beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code, house); % this is the behaviour and the events log
 
 if stage == 3
-
     [mts_form, mts_fid] = initiate_sub_beh_mts_file(sub.num, sub_dir, ...
                                                 stage, exp_code);
 end
@@ -123,7 +132,7 @@ elseif stage == 2
 elseif stage == 3
     
     n_practice_trials = 0;
-    ntrials = 90; % 90 in each context - have 60 performed w a memory probe
+    ntrials = 120; % 90 in each context - have 60 performed w a memory probe
     % and 30 without - that leaves 30 for each condition
     switch_prob = 1;
     [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
@@ -150,13 +159,12 @@ elseif stage == 3
     mts_ref_cresp = 3;
     % now combine for one matrix that codes all the things
     n_trials_between_mem_probe = [4 4 4 4 6 6 6 6]; % memory task will have this many intervening search trials
-    trials = allocate_dual_task_trials(trials, n_trials_between_mem_probe);
+    [trials, n_trls_per_block] = allocate_dual_task_trials(trials, n_trials_between_mem_probe);
     % this returns the trials matrix (taken from
     % generate_trial_structure_train) and adds two columns. The first new
     % column indicates if memory targets should be presented. The second
     % says if the memory probe should be presented. The last tells you
     % which context the memory locations should come
-    nmts_tgts = 100; % number of targets to draw from for each mts trial
 end
 
 if stage == 1
@@ -206,6 +214,7 @@ green = [27, 158, 119];
 purple = [117, 112, 179];
 %pink = [189, 41, 138]; 
 colour_options = {green, purple};
+memory_colour = [247, 247, 247];
 
 base_context_learn = [colour_options{sub_config(11)}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
                       colour_options{3-sub_config(11)}];
@@ -234,13 +243,12 @@ end
 breaks = 20; % how many trials inbetween breaks?
 count_blocks = 0;
 button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
-
+%----------------------------------------------------------------------
+%                       Keyboard information
+%----------------------------------------------------------------------
+KbCheck;
+KbName('UnifyKeyNames');
 if stage == 3
-    %----------------------------------------------------------------------
-    %                       Keyboard information
-    %----------------------------------------------------------------------
-    KbCheck;
-    KbName('UnifyKeyNames');
     % setup to collect keyboard responses
     resp.same = KbName('DownArrow');
     resp.diff = KbName('RightArrow');
@@ -250,8 +258,6 @@ end
 %%%%%%%%%%%%%%%%%%%%% SET UP PSYCHTOOLBOX THINGS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up screens and mex
-KbCheck;
-KbName('UnifyKeyNames');
 GetSecs;
 AssertOpenGL
 if where == 1 || where == 2
@@ -357,18 +363,26 @@ if stage == 3
 end
 % counter through the memory trials from each context
 
+% draw doors here with a neutral coloured border and display for a short
+% and random period of time % U2H - check these timings
+draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on);
+draw_background(window, backRect, xCenter, yCenter, col);
+draw_doors(window, doorRects, doors_closed_cols);
+pre_period = (time.max_pre_mem_tgts-time.min_pre_mem_tgts)*...
+    rand(1,1)+time.min_pre_mem_tgts;
+WaitSecs(pre_period); % add this if needed
 
 for count_trials = 1:length(trials(:,1))
-
  
     if count_trials == 1
         run_instructions(window, screenYpixels, stage, house);
         KbWait;
         WaitSecs(1); 
     end
-
     %%%%%%% trial start settings
     idxs = 0; % refresh 'door selected' idx
+    tgt_found = 0;
+
     % assign tgt loc and onset time
     tgt_loc = trials(count_trials, 3);
     tgt_flag = tgt_loc; %%%% where is the target
@@ -386,28 +400,11 @@ for count_trials = 1:length(trials(:,1))
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%% run trial
-    tgt_found = 0;
-   
-    % draw doors and start
-    draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
-    draw_background(window, backRect, xCenter, yCenter, col);
-    draw_doors(window, doorRects, doors_closed_cols);
-    if count_trials == 1
-        trial_start = Screen('Flip', window); % KG: changed for flexi/multi to track
-        % time across whole experiment, rather than timings trial by trial,
-        % to make sure we were capturing data across time (not losing
-        % things between trials)
-    else 
-        Screen('Flip', window);
-    end
-
     % is it a trial on which to present memory targets? if so, present
     if stage == 3
         if mem_tgts
 
-            pre_period = (time.max_pre_mem_tgts-time.min_pre_mem_tgts)*...
-                rand(1,1)+time.min_pre_mem_tgts;
-            WaitSecs(pre_period); % add this if needed
+
             counting_mem_trls(mem_cntxt) = counting_mem_trls(mem_cntxt) + 1;
             % get target and probe locations for this trial
             tgt_locs = mts_trials_cell{mem_cntxt}...
@@ -431,6 +428,21 @@ for count_trials = 1:length(trials(:,1))
             mem_delay_on = Screen('Flip', window, tgts_on + (frames.tgt_on_frames - 0.5) * time.ifi);
         end
     end
+   
+    % draw doors and start
+    draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
+    draw_background(window, backRect, xCenter, yCenter, col);
+    draw_doors(window, doorRects, doors_closed_cols);
+    if count_trials == 1
+        trial_start = Screen('Flip', window); % KG: changed for flexi/multi to track
+        % time across whole experiment, rather than timings trial by trial,
+        % to make sure we were capturing data across time (not losing
+        % things between trials)
+    else 
+        Screen('Flip', window);
+    end
+
+
 
     while ~any(tgt_found)
         

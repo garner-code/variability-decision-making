@@ -1,5 +1,5 @@
 % Variability and flexibility: mouse foraging task
-% K. Garner 2018/2023
+% K. Garner 2018/2023/2025
 % NOTES:
 %
 % Dimensions calibrated for 530 mm x 300 mm ASUS VG248 monitor 
@@ -36,7 +36,7 @@ where = 1; % if 0, in lab, if 1, in office, if 2, at home
 % rate), red smi system, description of file structure
 % manual things
 sub.num = input('sub number? ');
-sub.stage = 4; % match to sample stage
+sub.stage = 4; % match to sample stage (4 does not mean it was administered 4th)
 sub.tpoints = 0; % enter points scored so far
 sub.experiment = 'mt';
 exp_code = sub.experiment;
@@ -61,33 +61,30 @@ load('sub_infos.mat'); % matrix of counterbalancing info
 % see generate_sub_info_mat for details
 sub_config = sub_infos(sub.num, :);
 
-[mts_form, mts_fid] = initiate_sub_beh_mts_file(sub.num, sub_dir, ...
+[mts_form, mts_fid, mts_tgts] = initiate_sub_beh_mts_file(sub.num, sub_dir, ...
                                                 stage, exp_code);
+
+% set up some other params for running the task
 tgt_loc_idx = 4:7; % for calling the trial matrix during the task
 prb_loc_idx = 8:11;
 ntrials = 12; % per context, note that neither context trials are double 
+n_tgts_per_cat_per_trial = 2; % draw 2 from each category, on each trial
 % this number
 trials = generate_trial_structure_mts(ntrials, sub_config);
 write_trials_and_params_MTS(sub.num, stage, exp_code, sub_dir, ...
     trials);
-
+all_im_fnames = cell(size(trials,1), ...
+    n_tgts_per_cat_per_trial*2); % for collecting during the experiment
+% and saving at the end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% define colour settings 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-green = [27, 158, 119]; 
-purple = [117, 112, 179];
-colour_options = {green, purple};
-
-base_context_learn = [colour_options{sub_config(11)}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
-                      colour_options{3-sub_config(11)}];
+memory_colour = [247, 247, 247]; % border colour for now
 ndoors = 16;
 hole = [20, 20, 20];
 col   = [160 160 160]; % set up the colours of the doors
 doors_closed_cols = repmat([96, 96, 96]', 1, ndoors); 
 door_open_col = hole;
-context_cols = [90, 90, 90; ... % for now
-                90, 90, 90];
-nmts_tgts = 100; % how many to choose from overall
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%% SET UP PSYCHTOOLBOX THINGS
@@ -106,13 +103,12 @@ resp.diff = KbName('d');
 %----------------------------------------------------------------------
 %                       screen/stimuli etc
 %----------------------------------------------------------------------
-
 GetSecs;
 AssertOpenGL
 if where == 1 || where == 2
     Screen('Preference', 'SkipSyncTests', 1); %%%% only for debug mode!
     Screen('Preference', 'ConserveVRAM', 64); %%%% only for debug mode!
-    PsychDebugWindowConfiguration;
+    %PsychDebugWindowConfiguration;
 end
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
@@ -164,28 +160,29 @@ frames.mem_period = round(time.mem_period/time.ifi);
 %%%%%%%%% now we're ready to run through the experiment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+run_mts_instructions(window,screenYpixels);
+KbWait;
+WaitSecs(1);
+
 SetMouse(xCenter, yCenter, window);
 trial_start = GetSecs; % legacy
 for count_trials = 1:length(trials(:,1))
-
-    if count_trials == 1
-        %run_instructions(window, screenYpixels, stage, 1);
-        KbWait;
-        WaitSecs(1);  
-    end
 
     % get target and probe locations for this trial
     tgt_locs = trials(count_trials,tgt_loc_idx);
     prb_locs = trials(count_trials,prb_loc_idx);
     % get some target identities
-    tgt_ids = datasample(1:nmts_tgts,length(tgt_locs));
+
+    [mem_tex, mem_im_fnames] = draw_memory_textures_for_trial(window, ...
+        mts_tgts, n_tgts_per_cat_per_trial);
+    all_im_fnames(count_trials, :) = mem_im_fnames;
+
     % set context colours according to condition
-    edge_col = context_cols(1,:); 
-  
+    edge_col = memory_colour; 
     % draw targets and start
     draw_mts_tgts(window, edgeRect, backRect, ...
                     edge_col, col, doorRects, doors_closed_cols,...
-                    xCenter, yCenter, tgt_locs, tgt_ids, trial_start);
+                    xCenter, yCenter, tgt_locs, mem_tex, trial_start);
     tgts_on = Screen('Flip', window);
 
     % draw doors closed and present at the end of the memory delay period
@@ -198,7 +195,7 @@ for count_trials = 1:length(trials(:,1))
     % period
     draw_mts_tgts(window, edgeRect, backRect, ...
                     edge_col, col, doorRects, doors_closed_cols,...
-                    xCenter, yCenter, prb_locs, tgt_ids, trial_start);
+                    xCenter, yCenter, prb_locs, mem_tex, trial_start);
     prbs_on = Screen('Flip', window, mem_delay_on + (frames.mem_period - 0.5) * time.ifi);
 
     % now poll for the response
@@ -209,7 +206,7 @@ for count_trials = 1:length(trials(:,1))
 
         draw_mts_tgts(window, edgeRect, backRect, ...
             edge_col, col, doorRects, doors_closed_cols,...
-            xCenter, yCenter, prb_locs, tgt_ids, trial_start);
+            xCenter, yCenter, prb_locs, mem_tex, trial_start);
 
         [key_down,secs, key_code] = KbCheck;
         if key_code(resp.same)
@@ -236,6 +233,16 @@ for count_trials = 1:length(trials(:,1))
 
 end
 
+% save image filenames, in case we need in the future
+if sub < 10
+    save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-mts/' ...
+        sprintf('sub-0%d_tgt_ids.mat', sub.num)], 'all_im_fnames', '-mat');
+
+else
+    save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-mts/' ...
+        sprintf('sub-%d_tgt_ids.mat', sub.num)], 'all_im_fnames', '-mat');
+end
+
 fclose(mts_fid);
 
 end_text = 'This is the end! Press any key to continue...';
@@ -251,6 +258,5 @@ while waiting
         waiting = 0;
     end
 end
-
 
 sca

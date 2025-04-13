@@ -123,8 +123,8 @@ elseif stage == 2
 elseif stage == 3
     
     n_practice_trials = 0;
-    ntrials = 120; % 80 in each context - have 40 performed w a memory probe
-    % and 40 without - that leaves 20 for each condition
+    ntrials = 90; % 90 in each context - have 60 performed w a memory probe
+    % and 30 without - that leaves 30 for each condition
     switch_prob = 1;
     [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
     nmts_trials = 8; % number of trials from contexts 1, 2, 3, and 4 - i.e. n is multiplied by 4

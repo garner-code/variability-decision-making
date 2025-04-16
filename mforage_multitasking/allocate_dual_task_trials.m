@@ -1,5 +1,6 @@
 function [trials, n_trls_per_block] = allocate_dual_task_trials(search_trials, ...
-                                                n_trials_between_mem_probe)
+                                                n_trials_between_mem_probe, ...
+                                                n_subset_per_block)
 
 % add an extra two columns to search trials, the first denotes if there
 % should be a memory display at the start of the trial, and the second
@@ -19,13 +20,18 @@ strt_idx = end_idx - n_trials_between_mem_probe + 1;
 mx = max(end_idx);
 % below is ugly and hardcoded, but just setting up contexts from which to 
 % draw memory trials, could do a linear transform, but for future me
+% here I am assigning one third of trials as mem trials from other,
+% one third from neither, and one third as no mem
 context_a_trials(:,mem_context_col) = repelem([2,3,0], mx);
 context_b_trials(:,mem_context_col) = repelem([1,4,0], mx);
 
-end_idx = [end_idx, end_idx+mx, end_idx+(2*mx)];
+end_idx = [end_idx, end_idx+mx, end_idx+(2*mx)]; % get batches of
+% n grouped trials as specified in end_idx, 3 times
 strt_idx = [strt_idx, strt_idx+mx, strt_idx+(2*mx)];
 
 collect_trial_blocks = cell(2,length(end_idx));
+% collect blocks of search trials of that number and put them into
+% blocks
 for i = 1:length(end_idx)
 
     collect_trial_blocks{1,i} = context_a_trials(strt_idx(i):end_idx(i), :);
@@ -38,13 +44,13 @@ for i = 1:length(end_idx)
     end
 end
 
-% now randomise the order of the blocks
+% now randomise the order of the blocks within each context
 n_blocks = length(collect_trial_blocks);
 % now randomly order the blocks on each row
 collect_trial_blocks(1,:) = collect_trial_blocks(1,randperm(n_blocks));
 collect_trial_blocks(2,:) = collect_trial_blocks(2,randperm(n_blocks));
-% now collate the sub blocks into bigger blocks of 6 subsets each
-n_subset_per_block = 6;
+% now collate the sub blocks into bigger blocks of n subsets each
+
 strt_subsets = 1:n_subset_per_block:n_blocks;
 nd_subsets = n_subset_per_block:n_subset_per_block:n_blocks;
 subsets = cell(size(collect_trial_blocks,1), length(strt_subsets));

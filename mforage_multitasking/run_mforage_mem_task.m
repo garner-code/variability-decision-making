@@ -35,11 +35,12 @@ clear mex
 % task, pc, matlab and psychtoolbox version, eeg system (amplifier, hardware filter, cap, placement scheme, sample
 % rate), red smi system, description of file structure
 %%%%%% manual things
-where = 0; % if 0, in lab, if 1, in office, if 2, at home
+where = 1; % if 0, in lab, if 1, in office, if 2, at home
 if ~where
     aud_device = [];
 elseif where == 1
     aud_device = 8;
+    coin_handles = 0;
 else
     aud_device = 13;
 end
@@ -82,7 +83,7 @@ else
         sprintf('sub-%d_tgt_alloc.mat', sub.num)]);
 end
 srch_tgts = tgts.search;
-mem_tgts = tgts.memory;
+mts_tgts = tgts.memory;
 
 if stage == 1
     sub.house = input('house number? 1 or 2 '); % 1 for the first house, 2 for house 2, 9 to go through both
@@ -154,18 +155,28 @@ elseif stage == 3
     for i_mts = 1:max(mts_trials(:,2)) % dependent on consecutive numbering of contexts
         mts_trials_cell{i_mts} = mts_trials(mts_trials(:,2) == i_mts, :);
     end
-    mts_ref_tgt_locs = 4:6;
-    mts_ref_prb_locs = 7:9;
+    mts_ref_tgt_locs = 4:7;
+    mts_ref_prb_locs = 8:11;
     mts_ref_cresp = 3;
+    n_tgts_per_cat_per_trial = 2; % draw 2 from each category, on each trial
     % now combine for one matrix that codes all the things
-    n_trials_between_mem_probe = [4 4 4 4 6 6 6 6]; % memory task will have this many intervening search trials
-    [trials, n_trls_per_block] = allocate_dual_task_trials(trials, n_trials_between_mem_probe);
+    n_trials_between_mem_probe = [2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3]; % memory task will have this many intervening search trials
+    % cumsum should = 1/3 of trials
+    n_subset_per_block = 24; % total blocks for one context = (length(n_trials_between_mem_probe)*3/n_subset_per_block)
+    [trials, n_trls_per_block] = allocate_dual_task_trials(trials, n_trials_between_mem_probe, ...
+        n_subset_per_block);
+    cum_trls_per_block = cumsum(n_trls_per_block);
     % this returns the trials matrix (taken from
     % generate_trial_structure_train) and adds two columns. The first new
     % column indicates if memory targets should be presented. The second
     % says if the memory probe should be presented. The last tells you
     % which context the memory locations should come
+    all_mem_fnames = cell(sum(trials(:,6)), ...
+                        n_tgts_per_cat_per_trial*2); % for collecting during the experiment
 end
+% while we're here, set up a cell to collect all the targets used in the
+% search task
+all_srch_fnames = cell(size(trials, 1), 1);
 
 if stage == 1
     if house == 1
@@ -240,7 +251,7 @@ end
 %%%%%%% other considerations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-breaks = 20; % how many trials inbetween breaks?
+breaks = 20; % how many trials inbetween breaks? % doesn't apply to s3
 count_blocks = 0;
 button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
 %----------------------------------------------------------------------
@@ -250,8 +261,8 @@ KbCheck;
 KbName('UnifyKeyNames');
 if stage == 3
     % setup to collect keyboard responses
-    resp.same = KbName('DownArrow');
-    resp.diff = KbName('RightArrow');
+    resp.same = KbName('s');
+    resp.diff = KbName('d');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -263,7 +274,7 @@ AssertOpenGL
 if where == 1 || where == 2
     Screen('Preference', 'SkipSyncTests', 1); %%%% only for debug mode!
     Screen('Preference', 'ConserveVRAM', 64); %%%% only for debug mode!
-    %PsychDebugWindowConfiguration;
+    PsychDebugWindowConfiguration;
 end
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
@@ -309,6 +320,8 @@ time.min_pre_mem_tgts = 0.5; % min duration between last probe and new mem tgts 
 time.max_pre_mem_tgts = 1.5; % max duration of above
 time.tgts_on = 2; % how long we'll keep the target stimuli on
 time.mem_period = 2;
+time.period_before_mem_disp = 1; % how long white border is shown before memory targets come up
+time.period_before_prb_disp = 1;
 %time.probes_time_out = 2; % how many seconds until time out on the working memory task
 time.feedback_on = 1;
 time.tgt_on = .35;
@@ -318,29 +331,32 @@ frames.mem_period = round(time.mem_period/time.ifi);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-InitializePsychSound; % in case PC doesn't have .dll file
-% coin sound
-win_sounds = dir('win');
-% remove hidden files
-hidden_index = [];
-for ihid = 1:length(win_sounds)
-    if length(win_sounds(ihid).name) < 5
-        hidden_index = [hidden_index, ihid];
+if ~where || where == 2
+    InitializePsychSound; % in case PC doesn't have .dll file
+    % coin sound
+    win_sounds = dir('win');
+    % remove hidden files
+    hidden_index = [];
+    for ihid = 1:length(win_sounds)
+        if length(win_sounds(ihid).name) < 5
+            hidden_index = [hidden_index, ihid];
+        end
     end
-end
-win_sounds(hidden_index) = [];
-% now read in mp3 files
-coin_handles = cell(1, numel(length(win_sounds)));
-for imp3 = 1:length(win_sounds)
-    mp3fname = fullfile(win_sounds(imp3).folder, win_sounds(imp3).name);
-    [y, freq] = audioread(mp3fname);
-    coin_handles{imp3} = PsychPortAudio('Open', aud_device, [], 0, freq, size(y, 2)); % get handle
-    PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
-end
+    win_sounds(hidden_index) = [];
+    this_task_uses_this_one_sound = 4;
+    % now read in mp3 files
+    coin_handles = cell(1, numel(length(win_sounds)));
+    for imp3 = 1:length(win_sounds)
+        mp3fname = fullfile(win_sounds(this_task_uses_this_one_sound).folder, ...
+            win_sounds(this_task_uses_this_one_sound).name);
+        [y, freq] = audioread(mp3fname);
+        coin_handles{imp3} = PsychPortAudio('Open', aud_device, [], 0, freq, size(y, 2)); % get handle
+        PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
+    end
 
-% Playback once at start
-PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
-
+    % Playback once at start
+    PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%% now we're ready to run through the experiment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -360,25 +376,23 @@ door_idx_trialn = []; % collect the trial numbers that each collection of rts
 % belong to
 if stage == 3
     counting_mem_trls = zeros(1,max(mts_trials(:,2))); % this will serve as a 
+    % counter through the memory trials from each context
+    count_blocks = 1; % this serves as a counter to know when to present
+    % breaks
 end
-% counter through the memory trials from each context
+
 
 % draw doors here with a neutral coloured border and display for a short
 % and random period of time % U2H - check these timings
-draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on);
-draw_background(window, backRect, xCenter, yCenter, col);
-draw_doors(window, doorRects, doors_closed_cols);
-pre_period = (time.max_pre_mem_tgts-time.min_pre_mem_tgts)*...
-    rand(1,1)+time.min_pre_mem_tgts;
-WaitSecs(pre_period); % add this if needed
+%%%%%%% ADD START INSTRUCTIONS HERE FOR ALL STAGES
+
+run_instructions(window, screenYpixels, stage, house);
+KbWait;
+WaitSecs(1);
 
 for count_trials = 1:length(trials(:,1))
  
-    if count_trials == 1
-        run_instructions(window, screenYpixels, stage, house);
-        KbWait;
-        WaitSecs(1); 
-    end
+
     %%%%%%% trial start settings
     idxs = 0; % refresh 'door selected' idx
     tgt_found = 0;
@@ -404,21 +418,33 @@ for count_trials = 1:length(trials(:,1))
     if stage == 3
         if mem_tgts
 
+            % put up the memory display so people have a moment or two to
+            % orient to the new task
+            draw_edge(window, edgeRect, xCenter, yCenter,  memory_colour, 0, time.context_cue_on);
+            draw_background(window, backRect, xCenter, yCenter, col);
+            draw_doors(window, doorRects, doors_closed_cols);
+            Screen('Flip', window);
+            WaitSecs(time.period_before_mem_disp);
 
             counting_mem_trls(mem_cntxt) = counting_mem_trls(mem_cntxt) + 1;
             % get target and probe locations for this trial
             tgt_locs = mts_trials_cell{mem_cntxt}...
                 (counting_mem_trls(mem_cntxt),mts_ref_tgt_locs);
-            % get some target identities
-            tgt_ids = datasample(1:nmts_tgts,length(tgt_locs));
+            prb_locs = mts_trials_cell{mem_cntxt}...
+                (counting_mem_trls(mem_cntxt),mts_ref_prb_locs);
+
+            % get some target identities and draw the images
+            [mem_tex, mem_im_fnames] = draw_memory_textures_for_trial(window, ...
+                    mts_tgts, n_tgts_per_cat_per_trial);
+            all_mem_fnames(count_trials, :) = mem_im_fnames;
 
             mem_cresp = mts_trials_cell{mem_cntxt}...
                 (counting_mem_trls(mem_cntxt),mts_ref_cresp);
 
             % draw targets and start
             draw_mts_tgts(window, edgeRect, backRect, ...
-                edge_col, col, doorRects, doors_closed_cols,...
-                xCenter, yCenter, tgt_locs, tgt_ids, trial_start);
+                memory_colour, col, doorRects, doors_closed_cols,...
+                xCenter, yCenter, tgt_locs, mem_tex, trial_start);
             tgts_on = Screen('Flip', window);
 
             % draw doors closed and present at the start of the memory delay period
@@ -433,16 +459,7 @@ for count_trials = 1:length(trials(:,1))
     draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on); 
     draw_background(window, backRect, xCenter, yCenter, col);
     draw_doors(window, doorRects, doors_closed_cols);
-    if count_trials == 1
-        trial_start = Screen('Flip', window); % KG: changed for flexi/multi to track
-        % time across whole experiment, rather than timings trial by trial,
-        % to make sure we were capturing data across time (not losing
-        % things between trials)
-    else 
-        Screen('Flip', window);
-    end
-
-
+    Screen('Flip', window);
 
     while ~any(tgt_found)
         
@@ -471,8 +488,8 @@ for count_trials = 1:length(trials(:,1))
         
         % door has been selected, so open it
         while any(door_on_flag) 
-           % insert a function here that opens the door (if there is no
-           % target), or that breaks and moves to the draw_target_v2
+           % open the door (if there is no
+           % target), or break to the draw_target_v2
            % function, if the target is at the location of the selected
            % door
             
@@ -485,9 +502,8 @@ for count_trials = 1:length(trials(:,1))
                                                               doorRects, doors_closed_cols, ...
                                                               door_open_col,...
                                                               didx, beh_fid, beh_form, x, y, button_idx, time.context_cue_on);
-
         end
-    end % end of trial
+    end % end of search
 
     % feedback
     if stage < 3
@@ -506,14 +522,16 @@ for count_trials = 1:length(trials(:,1))
 
     tgt_start = GetSecs;
     
-    [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
+    [points, tgt_on, srch_fname] = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
                         doorRects, doors_closed_cols, didx, ...
-                        trials(count_trials,5), xCenter, yCenter, time.context_cue_on, ...
+                        srch_tgts, xCenter, yCenter, time.context_cue_on, ...
                         trial_start, door_select_count, feedback_on, ...
-                        coin_handles);
+                        coin_handles, where);
+    all_srch_fnames{count_trials} = srch_fname;
+
     %%%%% add a loop that leaves the target on 
     %%%%% for 500 msec, and polls the mouse during that time
-    while (GetSecs - tgt_on) < time.tgt_on % leave the target on for 500 ms
+    while (GetSecs - tgt_on) < time.tgt_on % leave the target on for some time
         % but poll the mouse
         WaitSecs(.015); % to mirror sample rate during the trials
         post_tgt_response_poll(window, trial_start, ... 
@@ -526,28 +544,40 @@ for count_trials = 1:length(trials(:,1))
     % now if its a mem probe trial, get the probe locations and draw
     if stage == 3
         if mem_prb
-            % get the memory probe locations
-            prb_locs = mts_trials_cell{mem_cntxt}...
-                (counting_mem_trls(mem_cntxt),mts_ref_prb_locs);
 
+            draw_edge(window, edgeRect, xCenter, yCenter,  memory_colour, 0, time.context_cue_on);
+            draw_background(window, backRect, xCenter, yCenter, col);
+            draw_doors(window, doorRects, doors_closed_cols);
+            Screen('Flip', window);
+            WaitSecs(time.period_before_prb_disp);
             draw_mts_tgts(window, edgeRect, backRect, ...
-                edge_col, col, doorRects, doors_closed_cols,...
-                xCenter, yCenter, prb_locs, tgt_ids, trial_start);
+                memory_colour, col, doorRects, doors_closed_cols,...
+                xCenter, yCenter, prb_locs, mem_tex, trial_start);
             prbs_on = Screen('Flip', window);
             % now poll for the response
-            [rt, sub_resp] = run_memory_probe(prbs_on,window, edgeRect, backRect, ...
-                edge_col, col, doorRects, ...
+            [rt, sub_resp] = run_memory_probe(prbs_on, window, edgeRect, backRect, ...
+                memory_colour, col, doorRects, ...
                 doors_closed_cols, ...
                 xCenter, yCenter, prb_locs,...
-                tgt_ids, trial_start, resp, ...
+                mem_tex, trial_start, resp, ...
                 time);
-
             % update trial info into log file
             fprintf(mts_fid, mts_form, sub.num, stage, count_trials, ...
                 mem_cntxt, tgts_on, prbs_on, sub_resp, ...
                 mem_cresp, rt);
-
+        
+        % now draw blank doors for a random period of time, before moving
+        % onto the next trial
+        wait_time = (time.max_pre_mem_tgts-time.min_pre_mem_tgts)*rand(1) ...
+            + time.min_pre_mem_tgts;
+            % draw doors and start
+            draw_edge(window, edgeRect, xCenter, yCenter, memory_colour, 0, time.context_cue_on); 
+            draw_background(window, backRect, xCenter, yCenter, col);
+            draw_doors(window, doorRects, doors_closed_cols);
+            Screen('Flip', window);
+            WaitSecs(wait_time);
         end
+
     end
 
     tpoints = tpoints + points;
@@ -559,21 +589,32 @@ for count_trials = 1:length(trials(:,1))
         WaitSecs(1);
     end
     
-    if any(mod(count_trials-n_practice_trials, breaks))
-    else
-        if count_trials == n_practice_trials
+    if stage < 3
+        if any(mod(count_trials-n_practice_trials, breaks))
+            break_time = 0;
         else
-            
-            % feedback = get_performance_feedback(door_off_ts, door_on_ts,...
-            %             door_idx_trialn, ...
-            %             moves_record, ...
-            %             count_trials, breaks, stage); % from flexi - do
-            %             we want it here?
-            take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
-                        breaks, backRect, xCenter, yCenter, screenYpixels, ...
-                        tpoints, stage);
-            KbWait;
+            if count_trials == n_practice_trials
+                break_time = 0;
+            else
+                break_time = 1;
+            end
         end
+
+    elseif stage == 3
+        if any(mod(count_trials-n_practice_trials, ...
+                cum_trls_per_block(count_blocks)))
+            break_time = 0;
+        else
+            break_time = 1;
+            count_blocks = count_blocks+1;
+        end
+    end
+
+    if break_time
+        take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
+            breaks, backRect, xCenter, yCenter, screenYpixels, ...
+            tpoints, stage);
+        KbWait;
         WaitSecs(1);
     end
 
@@ -601,9 +642,45 @@ end % end stage 1 response tally
     
 end
 
+% save the images used for the search task, in case we need in the future
+if stage == 1
+    ses_str = 'learn';
+elseif stage == 2
+    ses_str = 'train';
+elseif stage == 3
+    ses_str = 'test';
+end
+if sub.num < 10
+    save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-', ses_str '/' ...
+        sprintf('sub-0%d_tgt_ids.mat', sub.num)], 'all_srch_fnames', '-mat');
+
+else
+    save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-', ses_str '/' ...
+        sprintf('sub-%d_tgt_ids.mat', sub.num)], 'all_srch_fnames', '-mat');
+end
+
+if stage == 3
+    % save image filenames, in case we need in the future
+    if sub.num < 10
+        save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-test/' ...
+            sprintf('sub-0%d_tgt_ids.mat', sub.num)], 'all_mem_fnames', '-mat');
+
+    else
+        save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-test/' ...
+            sprintf('sub-%d_tgt_ids.mat', sub.num)], 'all_mem_fnames', '-mat');
+    end
+end
+
+if stage == 3
+fclose(mts_fid);
+end
+fclose(beh_fid);
+
 sca;
 Priority(0);
-PsychPortAudio('Close');
+if ~where || where == 2
+    PsychPortAudio('Close');
+end
 Screen('CloseAll');
 fclose('all');
 

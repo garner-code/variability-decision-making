@@ -274,7 +274,7 @@ AssertOpenGL
 if where == 1 || where == 2
     Screen('Preference', 'SkipSyncTests', 1); %%%% only for debug mode!
     Screen('Preference', 'ConserveVRAM', 64); %%%% only for debug mode!
-    PsychDebugWindowConfiguration;
+    %PsychDebugWindowConfiguration;
 end
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
@@ -310,6 +310,10 @@ doorPix    = 26.4*pix_per_mm*display_scale; % KG: MFORAGE: May want to change no
 xPos = repmat(xPos, 4, 1);
 yPos = repmat(yPos', 1, 4);
 r = doorPix/2; % radius is the distance from center to the edge of the door
+
+badge_names = {'Bronze', 'Silver', 'Gold', 'Champion'}; % DEFINE FOR REG AND LOCKED
+[badge_textures, badge_rects] = setup_badges(window, screenXpixels, ...
+    screenYpixels, 50, pix_per_mm, badge_names);
 
 % timing % KG: MFORAGE: timing is largely governed by participant's button
 % presses, not much needs to be defined here
@@ -381,18 +385,15 @@ if stage == 3
     % breaks
 end
 
-
-% draw doors here with a neutral coloured border and display for a short
-% and random period of time % U2H - check these timings
-%%%%%%% ADD START INSTRUCTIONS HERE FOR ALL STAGES
-
-run_instructions(window, screenYpixels, stage, house);
+%%%%%%% INSTRUCTIONS HERE FOR [MOST] ALL STAGES
+run_instructions(window, screenYpixels, stage, house, ...
+    badge_rects, badge_textures);
 KbWait;
 WaitSecs(1);
-
+trial_start = GetSecs;
 for count_trials = 1:length(trials(:,1))
  
-
+    
     %%%%%%% trial start settings
     idxs = 0; % refresh 'door selected' idx
     tgt_found = 0;
@@ -404,7 +405,7 @@ for count_trials = 1:length(trials(:,1))
 
     % set context colours according to condition
     edge_col = context_cols(trials(count_trials, 2), :); % KG: select whether it is context 1 or 2
-    
+
     if stage == 3
         % memory settings for this trial
         mem_tgts = trials(count_trials, 6);

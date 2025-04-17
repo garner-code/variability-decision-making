@@ -32,7 +32,7 @@ these_ims = these_ims(arrayfun(@(x) x.name(1) ~= '.', ...
 % randomly select one
 im_idx = randperm(length(these_ims), 1);
 im_fname = fullfile(these_ims(im_idx).folder, ...
-    these_ims(im_idx).name);
+    these_ims(im_idx).name)
 im = imread(im_fname);
 srch_fname = im_fname;
 tex = Screen('MakeTexture', window, im);
@@ -44,7 +44,7 @@ if feedback_on
     if door_select_count >= goal
         points = 0;
     else
-        points = goal - door_select_count;
+        points = 100;
     end
 
     %     Screen('TextStyle', window, 1);

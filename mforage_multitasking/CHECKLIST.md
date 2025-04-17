@@ -19,16 +19,3 @@
 'Paw-some work!'
 
 
-
-**After week 7**
-7. Enough trials between memory probes (in the dual task condition)? or too many? - double
-8. I have added a period before the memory targets come on (750 msec-ish, to split
-it apart from when just preceded by a memory probe. Good idea or bad idea?
-9. Check that each context is associated only with memory targets from the other
-context, or from 4 locations that belong to neither context (which is uniquely associated with
-that context).
-10. Stage 3 - need to change it so that blocks don't intervene between memory display/probes
-11. Should we have alternating green/purple task blocks, or keep it separate? or have a screen to 
-say you are switching between the tasks?
-12. Are targets on for too long during the search task?
-

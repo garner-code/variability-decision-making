@@ -162,7 +162,7 @@ elseif stage == 3
     % now combine for one matrix that codes all the things
     n_trials_between_mem_probe = [2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3]; % memory task will have this many intervening search trials
     % cumsum should = 1/3 of trials
-    n_subset_per_block = 24; % total blocks for one context = (length(n_trials_between_mem_probe)*3/n_subset_per_block)
+    n_subset_per_block = 12; % to calculate total blocks for one context = (length(n_trials_between_mem_probe)*3/n_subset_per_block)
     [trials, n_trls_per_block] = allocate_dual_task_trials(trials, n_trials_between_mem_probe, ...
         n_subset_per_block);
     cum_trls_per_block = cumsum(n_trls_per_block);

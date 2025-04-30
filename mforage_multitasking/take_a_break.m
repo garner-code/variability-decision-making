@@ -56,7 +56,7 @@ if stage == 2 % only actually want points feedback in the second stage
             'You won the Champion badge!\n'...
             'You`ve out-hide-and-seeked them all!\n'...
             'The animals whisper your name now...\n'...
-            'You live on in their legends.']);
+            'You live on in their legends.'], tpoints);
      end
 
     final_instructions = sprintf(...
@@ -91,7 +91,7 @@ else
     
     if stage == 3 % if its stage 3, then 
         
-        this_block = count_blocks;
+        this_block = breaks-1;
         total_blocks = length(ntrials);
     else
         this_block = count_trials/breaks;

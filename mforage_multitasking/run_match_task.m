@@ -26,7 +26,7 @@ clear mex
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % session settings
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-where = 1; % if 0, in lab, if 1, in office, if 2, at home
+where = 0; % if 0, in lab, if 1, in office, if 2, at home
 
 % make .json files functions to be written
 %%%%%% across participants

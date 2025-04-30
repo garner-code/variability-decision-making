@@ -40,13 +40,14 @@ if ~where
     aud_device = [];
 elseif where == 1
     aud_device = 8;
+    coin_handles = 0;
 else
     aud_device = 13;
 end
 
 sub.num = input('sub number? ');
 sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
-sub.tpoints = input('points? '); % enter points scored so far
+sub.tpoints = 0; %input('points? '); % enter points scored so far
 sub.experiment = 'flex';
 
 exp_code = sub.experiment;
@@ -127,6 +128,10 @@ elseif stage == 3
     [trials, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_config, door_probs, switch_prob);
 end
 
+% while we're here, set up a cell to collect all the targets used in the
+% search task
+all_srch_fnames = cell(size(trials, 1), 1);
+
 if stage == 1
     if house == 1
         door_ps = [ca_ps; zeros(1, length(ca_ps)); repmat(1/length(ca_ps), 1, length(ca_ps))];
@@ -182,7 +187,7 @@ if stage == 1 || stage == 3
 
     context_cols =  [base_context_learn(1, :); ... % colours are randomly assigned
                      base_context_learn(2, :); % 
-                     [0, 0, 0]]; % finish with practice context cols
+                     [241, 238, 246]]; % finish with practice context cols
 elseif stage == 2
 
     context_cols =  [base_context_learn(1, :); ... % colours are randomly assigned
@@ -209,7 +214,7 @@ AssertOpenGL
 if where == 1 || where == 2
     Screen('Preference', 'SkipSyncTests', 1); %%%% only for debug mode!
     Screen('Preference', 'ConserveVRAM', 64); %%%% only for debug mode!
-    PsychDebugWindowConfiguration;
+    %PsychDebugWindowConfiguration;
 end
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
@@ -219,7 +224,7 @@ screenNumber = max(screens);
 white = WhiteIndex(screenNumber);
 black = BlackIndex(screenNumber);
 back_grey = 200;
-[window, windowRect] = PsychImaging('OpenWindow', screenNumber, back_grey);
+[window, windowRect] = PsychImaging('OpenWindow', screenNumber, black);
 ifi = Screen('GetFlipInterval', window);
 waitframes = 1;
 [screenXpixels, screenYpixels] = Screen('WindowSize', window);
@@ -246,6 +251,11 @@ xPos = repmat(xPos, 4, 1);
 yPos = repmat(yPos', 1, 4);
 r = doorPix/2; % radius is the distance from center to the edge of the door
 
+badge_names = {'Bronze', 'Silver', 'Gold', 'Champion'}; % DEFINE FOR REG AND LOCKED
+[badge_textures, badge_rects] = setup_badges(window, screenXpixels, ...
+    screenYpixels, 50, pix_per_mm, badge_names);
+points_structure = [6000, 12000, 17000, 22000];
+
 % timing % KG: MFORAGE: timing is largely governed by participant's button
 % presses, not much needs to be defined here
 time.ifi = Screen('GetFlipInterval', window);
@@ -256,28 +266,30 @@ time.tgt_on = .35; % 350 msec - adjust this to adjust how long the target is on 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-InitializePsychSound; % in case PC doesn't have .dll file
-% coin sound
-win_sounds = dir('win');
-% remove hidden files
-hidden_index = [];
-for ihid = 1:length(win_sounds)
-    if length(win_sounds(ihid).name) < 5
-        hidden_index = [hidden_index, ihid];
+if where ~= 1
+    InitializePsychSound; % in case PC doesn't have .dll file
+    % coin sound
+    win_sounds = dir('win');
+    % remove hidden files
+    hidden_index = [];
+    for ihid = 1:length(win_sounds)
+        if length(win_sounds(ihid).name) < 5
+            hidden_index = [hidden_index, ihid];
+        end
     end
-end
-win_sounds(hidden_index) = [];
-% now read in mp3 files
-coin_handles = cell(1, numel(length(win_sounds)));
-for imp3 = 1:length(win_sounds)
-    mp3fname = fullfile(win_sounds(imp3).folder, win_sounds(imp3).name);
-    [y, freq] = audioread(mp3fname);
-    coin_handles{imp3} = PsychPortAudio('Open', aud_device, [], 0, freq, size(y, 2)); % get handle
-    PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
-end
+    win_sounds(hidden_index) = [];
+    % now read in mp3 files
+    coin_handles = cell(1, numel(length(win_sounds)));
+    for imp3 = 1:length(win_sounds)
+        mp3fname = fullfile(win_sounds(imp3).folder, win_sounds(imp3).name);
+        [y, freq] = audioread(mp3fname);
+        coin_handles{imp3} = PsychPortAudio('Open', aud_device, [], 0, freq, size(y, 2)); % get handle
+        PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
+    end
 
-% Playback once at start
-PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
+    % Playback once at start
+    PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%% now we're ready to run through the experiment
@@ -297,14 +309,18 @@ door_idx_trialn = []; % collect the trial numbers that each collection of rts
 % belong to
 
 
-for count_trials = 1:length(trials(:,1))
+% draw srch tgt for the first trial
+srch_tgts = [1 2 3 4]; % all categories of image are game
+[srch_tex, srch_fname] = make_search_texture(srch_tgts, window);
 
- 
-    if count_trials == 1 
-        run_instructions(window, screenYpixels, stage, house);
-        KbWait;
-        WaitSecs(1); 
-    end
+%%%%%%% INSTRUCTIONS HERE FOR [MOST] ALL STAGES
+run_instructions(window, screenYpixels, stage, house, ...
+    badge_rects, badge_textures, points_structure);
+KbWait;
+WaitSecs(1);
+trial_start = GetSecs;
+
+for count_trials = 1:length(trials(:,1))
 
     %%%%%%% trial start settings
     idxs = 0; % refresh 'door selected' idx
@@ -399,26 +415,27 @@ for count_trials = 1:length(trials(:,1))
     
     [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
                         doorRects, doors_closed_cols, didx, ...
-                        trials(count_trials,5), xCenter, yCenter, time.context_cue_on, ...
+                        srch_tex, xCenter, yCenter, time.context_cue_on, ...
                         trial_start, door_select_count, feedback_on, ...
-                        coin_handles);
+                        coin_handles, where);
     %%%%% KG task switching - add a loop that leaves the target on 
-    %%%%% for 500 msec, and polls the mouse during that time
-    while (GetSecs - tgt_on) < time.tgt_on % leave the target on for 500 ms
+    %%%%% for time.tgt_on msec, and polls the mouse during that time
+    nxt_tgt_drawn = 0;
+    while (GetSecs - tgt_on) < time.tgt_on % leave the target on for time.tgt_on
+        % while you have time, draw the target texture for the next trial
+        if ~nxt_tgt_drawn
+            Screen('Close', srch_tex);
+            [srch_tex, srch_fname] = make_search_texture(srch_tgts, window);
+            nxt_tgt_drawn = 1;
+        end
         % but poll the mouse
         WaitSecs(.015); % to mirror sample rate during the trials
         post_tgt_response_poll(window, trial_start, ...
-                                xPos, yPos, r, door_ps(trials(count_trials,2), :),...
-                                beh_fid, beh_form, sub.num,...
-                                sub.stage, count_trials, trials(count_trials,2), ...
-                                tgt_flag)
+            xPos, yPos, r, door_ps(trials(count_trials,2), :),...
+            beh_fid, beh_form, sub.num,...
+            sub.stage, count_trials, trials(count_trials,2), ...
+            tgt_flag)
     end
-
-    %     [~,~,buttons] = GetMouse(window); % old code which just waited
-    %     for mouse release
-    % while buttons(button_idx)
-    %     [~,~,buttons] = GetMouse(window);
-    % end
 
     tpoints = tpoints + points;
 
@@ -444,11 +461,11 @@ for count_trials = 1:length(trials(:,1))
             end
             take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
                         breaks, backRect, xCenter, yCenter, screenYpixels, ...
-                        tpoints, stage,...
-                        feedback);
+                        tpoints, stage, feedback,...
+                        points_structure, badge_rects, badge_textures);
             KbWait;
+            WaitSecs(1);
         end
-        WaitSecs(1);
     end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -475,11 +492,28 @@ end % end stage 1 response tally
     
 end
 
+% save the images used for the search task, in case we need in the future
+if stage == 1
+    ses_str = 'learn';
+elseif stage == 2
+    ses_str = 'train';
+elseif stage == 3
+    ses_str = 'test';
+end
+if sub.num < 10
+    save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-', ses_str '/' ...
+        sprintf('sub-0%d_tgt_ids.mat', sub.num)], 'all_srch_fnames', '-mat');
+
+else
+    save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-', ses_str '/' ...
+        sprintf('sub-%d_tgt_ids.mat', sub.num)], 'all_srch_fnames', '-mat');
+end
+
+fclose('all');
 sca;
 Priority(0);
 PsychPortAudio('Close');
 Screen('CloseAll');
-fclose('all');
 
 sprintf('total points = %d', tpoints)
 if stage == 1 && house < 9 &&  ~go

@@ -1,8 +1,8 @@
 function [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edgeCol, backCol, ...
     doorRects, doorCol,...
-    didx, image_num, xCenter, yCenter, context_on, trial_start,...
-    door_select_count, feedback_on, ...
-    coin_handles)
+    didx, srch_tex, xCenter, yCenter, context_on, trial_start,...
+    door_select_count, feedback_on,...
+    coin_handles, where)
 % this function draws the target to the selected door
 % backRect/backCol = features of background
 % doorRects/doorCol = door features
@@ -14,23 +14,6 @@ function [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edgeCol, 
 % ScreenYPixels - number of pixels along Y
 % coin_handle - handle to audio feedback sound
 
-if image_num < 10
-    if exist(sprintf('tgt0-100/tgt0%d.jpeg', image_num))
-        im_fname = sprintf('tgt0-100/tgt0%d.jpeg', image_num);
-    else
-        im_fname = sprintf('tgt0-100/tgt0%d.jpg', image_num);
-    end
-else
-    if exist(sprintf('tgt0-100/tgt%d.jpeg', image_num))
-        im_fname = sprintf('tgt0-100/tgt%d.jpeg', image_num);
-    else
-        im_fname = sprintf('tgt0-100/tgt%d.jpg', image_num);
-    end
-end
-
-im = imread(im_fname);
-tex = Screen('MakeTexture', window, im);
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % now compute performance relative to target
 if feedback_on
@@ -38,7 +21,7 @@ if feedback_on
     if door_select_count >= goal
         points = 0;
     else
-        points = goal - door_select_count;
+        points = 100;
     end
 
     %     Screen('TextStyle', window, 1);
@@ -56,12 +39,13 @@ draw_edge(window, edgeRect, xCenter, yCenter, edgeCol, trial_start, context_on);
 draw_background(window, backRect, xCenter, yCenter, backCol);
 draw_doors(window, doorRects, doorCol);
 im_rect = doorRects(:, didx);
-Screen('DrawTexture', window, tex, [], im_rect);
+Screen('DrawTexture', window, srch_tex, [], im_rect);
 % start sound and draw the target
-if points > 0
-    PsychPortAudio('Start', coin_handles{points}, 1, 0, 0);
+if ~where || where == 2
+    if points > 0
+        PsychPortAudio('Start', coin_handles{4}, 1, 0, 0);
+    end
 end
 tgt.vbl = Screen('Flip', window);
-tgt_on = tgt.vbl; % this is what time the target is turned on
-
+tgt_on = tgt.vbl;
 end

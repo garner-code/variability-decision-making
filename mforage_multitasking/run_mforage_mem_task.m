@@ -137,7 +137,7 @@ elseif stage == 3
     % and 30 without - that leaves 30 for each condition
     switch_prob = 1;
     [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
-    nmts_trials = 8; % number of trials from contexts 1, 2, 3, and 4 - i.e. n is multiplied by 4
+    nmts_trials = 16; % number of trials from contexts 1, 2, 3, and 4 - i.e. n is multiplied by 4
     mts_trials = generate_trial_structure_mts(nmts_trials, sub_config);    
     % outcome matrix of this is:
     % col 1 = row number
@@ -314,6 +314,7 @@ r = doorPix/2; % radius is the distance from center to the edge of the door
 badge_names = {'Bronze', 'Silver', 'Gold', 'Champion'}; % DEFINE FOR REG AND LOCKED
 [badge_textures, badge_rects] = setup_badges(window, screenXpixels, ...
     screenYpixels, 50, pix_per_mm, badge_names);
+points_structure = [6000, 12000, 17000, 22000];
 
 % timing % KG: MFORAGE: timing is largely governed by participant's button
 % presses, not much needs to be defined here
@@ -324,8 +325,8 @@ time.min_pre_mem_tgts = 0.5; % min duration between last probe and new mem tgts 
 time.max_pre_mem_tgts = 1.5; % max duration of above
 time.tgts_on = 2; % how long we'll keep the target stimuli on
 time.mem_period = 2;
-time.period_before_mem_disp = 1; % how long white border is shown before memory targets come up
-time.period_before_prb_disp = 1;
+time.period_before_mem_disp = 0.25; % how long white border is shown before memory targets come up
+time.period_before_prb_disp = 0.25;
 %time.probes_time_out = 2; % how many seconds until time out on the working memory task
 time.feedback_on = 1;
 time.tgt_on = .35;
@@ -385,9 +386,11 @@ if stage == 3
     % breaks
 end
 
+% draw srch tgt for the first trial
+[srch_tex, srch_fname] = make_search_texture(srch_tgts, window);
 %%%%%%% INSTRUCTIONS HERE FOR [MOST] ALL STAGES
 run_instructions(window, screenYpixels, stage, house, ...
-    badge_rects, badge_textures);
+    badge_rects, badge_textures, points_structure);
 KbWait;
 WaitSecs(1);
 trial_start = GetSecs;
@@ -412,6 +415,9 @@ for count_trials = 1:length(trials(:,1))
         mem_prb = trials(count_trials, 7);
         mem_cntxt = trials(count_trials, 8);
     end
+
+    all_srch_fnames{count_trials} = srch_fname; % this is decided before the first trial above, 
+    % or at the end of each trial
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%% run trial
@@ -523,17 +529,24 @@ for count_trials = 1:length(trials(:,1))
 
     tgt_start = GetSecs;
     
-    [points, tgt_on, srch_fname] = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
+    [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
                         doorRects, doors_closed_cols, didx, ...
-                        srch_tgts, xCenter, yCenter, time.context_cue_on, ...
+                        srch_tex, xCenter, yCenter, time.context_cue_on, ...
                         trial_start, door_select_count, feedback_on, ...
                         coin_handles, where);
-    all_srch_fnames{count_trials} = srch_fname;
 
     %%%%% add a loop that leaves the target on 
-    %%%%% for 500 msec, and polls the mouse during that time
+    %%%%% for time.tgt_on msec, and polls the mouse during that time
+    nxt_tgt_drawn = 0;
     while (GetSecs - tgt_on) < time.tgt_on % leave the target on for some time
-        % but poll the mouse
+        % while you have time, draw the target texture for the next trial        
+        if ~nxt_tgt_drawn
+            Screen('Close', srch_tex);
+            [srch_tex, srch_fname] = make_search_texture(srch_tgts, window);
+            nxt_tgt_drawn = 1;
+        end
+
+        % poll the mouse
         WaitSecs(.015); % to mirror sample rate during the trials
         post_tgt_response_poll(window, trial_start, ... 
                                 xPos, yPos, r, door_ps(trials(count_trials,2), :),...
@@ -554,6 +567,8 @@ for count_trials = 1:length(trials(:,1))
             draw_mts_tgts(window, edgeRect, backRect, ...
                 memory_colour, col, doorRects, doors_closed_cols,...
                 xCenter, yCenter, prb_locs, mem_tex, trial_start);
+            DrawFormattedText(window, '`S` for SAME, `D` for DIFFERENT',...
+                'Center', screenYpixels*.1, [0 0 255]);
             prbs_on = Screen('Flip', window);
             % now poll for the response
             [rt, sub_resp] = run_memory_probe(prbs_on, window, edgeRect, backRect, ...
@@ -561,7 +576,7 @@ for count_trials = 1:length(trials(:,1))
                 doors_closed_cols, ...
                 xCenter, yCenter, prb_locs,...
                 mem_tex, trial_start, resp, ...
-                time);
+                time, screenYpixels);
             % update trial info into log file
             fprintf(mts_fid, mts_form, sub.num, stage, count_trials, ...
                 mem_cntxt, tgts_on, prbs_on, sub_resp, ...
@@ -577,6 +592,7 @@ for count_trials = 1:length(trials(:,1))
             draw_doors(window, doorRects, doors_closed_cols);
             Screen('Flip', window);
             WaitSecs(wait_time);
+            Screen('Close', mem_tex);
         end
 
     end
@@ -612,9 +628,22 @@ for count_trials = 1:length(trials(:,1))
     end
 
     if break_time
-        take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
-            breaks, backRect, xCenter, yCenter, screenYpixels, ...
-            tpoints, stage);
+        if stage == 1
+            take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
+                breaks, backRect, xCenter, yCenter, screenYpixels, ...
+                tpoints, stage, points_structure, badge_rects, badge_textures);
+
+        elseif stage == 2
+            take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
+                breaks, backRect, xCenter, yCenter, screenYpixels, ...
+                tpoints, stage, points_structure, badge_rects, badge_textures);
+
+        elseif stage == 3
+            take_a_break(window, count_trials-n_practice_trials, n_trls_per_block, ...
+                count_blocks, backRect, xCenter, yCenter, screenYpixels, ...
+                tpoints, stage, points_structure, badge_rects, badge_textures);
+
+        end
         KbWait;
         WaitSecs(1);
     end
@@ -672,20 +701,16 @@ if stage == 3
     end
 end
 
-if stage == 3
-fclose(mts_fid);
-end
-fclose(beh_fid);
-
+fclose('all');
 sca;
 Priority(0);
 if ~where || where == 2
     PsychPortAudio('Close');
 end
 Screen('CloseAll');
-fclose('all');
 
-sprintf('total points = %d', tpoints)
+%sprintf('total points = %d', tpoints)
+
 if stage == 1 && house < 9 &&  ~go
     sprintf('achievement unlocked! proceed to next level')
 elseif stage == 1 && house < 9 && count_trials == length(trials(:,1))

@@ -231,10 +231,12 @@ for count_trials = 1:length(trials(:,1))
               trials(count_trials,2), tgts_on, prbs_on, sub_resp, ...
               trials(count_trials, 3), rt);
 
+    Screen('Close', mem_tex);
+
 end
 
 % save image filenames, in case we need in the future
-if sub < 10
+if sub.num < 10
     save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-mts/' ...
         sprintf('sub-0%d_tgt_ids.mat', sub.num)], 'all_im_fnames', '-mat');
 
@@ -243,7 +245,7 @@ else
         sprintf('sub-%d_tgt_ids.mat', sub.num)], 'all_im_fnames', '-mat');
 end
 
-fclose(mts_fid);
+%fclose(mts_fid);
 
 end_text = 'This is the end! Press any key to continue...';
 Screen('TextStyle', window, 1);
@@ -251,12 +253,13 @@ Screen('TextSize', window, 30);
 DrawFormattedText(window, end_text, 'Center', screenYpixels*.1, [0 0 255]);
 Screen('Flip', window);
 
-waiting = 1;
-while waiting
-    [key_down, ~, ~] = KbCheck;
-    if key_down
-        waiting = 0;
-    end
-end
+KbWait();
+WaitSecs(0.5);
 
-sca
+fclose('all');
+Priority(0);
+if ~where || where == 2
+    PsychPortAudio('Close');
+end
+Screen('CloseAll');
+sca;

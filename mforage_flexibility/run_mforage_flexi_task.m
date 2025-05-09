@@ -398,7 +398,7 @@ for count_trials = 1:length(trials(:,1))
 
     
     % KG: MFORAGE: this feedback code may move dependening on other learning stages
-    if stage < 3
+    if stage < 3 || stage == 10
         if stage == 1 || stage == 10
             feedback_on = 1;
         elseif stage == 2 && sum(reward_trials == count_trials)

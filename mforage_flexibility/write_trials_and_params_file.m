@@ -34,7 +34,7 @@ fprintf(trlg_fid, '%d\t%d\t%d\t%d\t%d\t%d\t%d\n', [repmat(sub, 1, length(trials(
 fclose(trlg_fid);
 
 % save the subject parameters for this session 
-if stage == 1
+if stage == 1 || stage == 10
     if sub < 10
         sess_params_mat_name = [sprintf('exp_%s', exp_code), '/', sub_dir, sprintf('/ses-%s', ses_str), '/beh/', ...
             sprintf('sub-%0d-ses-%s_house-%d_task-mforage_sess-params', sub, ses_str, house)];

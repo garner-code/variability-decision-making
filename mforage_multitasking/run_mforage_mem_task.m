@@ -35,7 +35,7 @@ clear mex
 % task, pc, matlab and psychtoolbox version, eeg system (amplifier, hardware filter, cap, placement scheme, sample
 % rate), red smi system, description of file structure
 %%%%%% manual things
-where = 1; % if 0, in lab, if 1, in office, if 2, at home
+where = 0; % if 0, in lab, if 1, in office, if 2, at home
 if ~where
     aud_device = [];
 elseif where == 1
@@ -46,7 +46,7 @@ else
 end
 
 sub.num = input('sub number? ');
-sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
+sub.stage = input('stage? 1 for learning, 10 for post-learning, 2 for training, 3 for test ');
 %sub.tpoints = input('points? '); % enter points scored so far
 sub.tpoints = 0;
 sub.experiment = 'mt';
@@ -84,7 +84,7 @@ end
 srch_tgts = tgts.search;
 mts_tgts = tgts.memory;
 
-if stage == 1
+if stage == 1 || stage == 10
     sub.house = input('house number? 1 or 2 '); % 1 for the first house, 2 for house 2, 9 to go through both
     house = sub.house;
 else
@@ -102,12 +102,20 @@ load('probs_cert_world_v2.mat'); % this specifies that there are 4 doors with p=
 door_probs   = probs_cert_world;
 clear probs_cert_world 
 
-% KG: MFORAGE: will change the below
 if stage == 1 
-
-    n_practice_trials = 5;
+    if house == 1
+        n_practice_trials = 5;
+    else
+        n_practice_trials = 0;
+    end
     ntrials = 200; % KG: MFORAGE - max per context
     [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house); 
+
+elseif stage == 10
+
+    n_practice_trials = 0;
+    ntrials = 80; % KG: MFORAGE - max per context
+    [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house);
 
 elseif stage == 2
 
@@ -177,13 +185,11 @@ end
 % search task
 all_srch_fnames = cell(size(trials, 1), 1);
 
-if stage == 1
+if stage == 1 || stage == 10
     if house == 1
         door_ps = [ca_ps; zeros(1, length(ca_ps)); repmat(1/length(ca_ps), 1, length(ca_ps))];
     elseif house == 2
         door_ps = [zeros(1, length(ca_ps)); ca_ps; repmat(1/length(ca_ps), 1, length(ca_ps))];
-    else
-        door_ps = [ca_ps(1,:); ca_ps(2,:); repmat(1/length(ca_ps(1,:)), 1, length(ca_ps(1,:)))];
     end
 else
         door_ps = [ca_ps; cb_ps; repmat(1/length(ca_ps), 1, length(ca_ps))]; % create a tt x door matrix for display referencing later
@@ -234,7 +240,7 @@ col   = [160 160 160]; % set up the colours of the doors
 doors_closed_cols = repmat([96, 96, 96]', 1, ndoors); 
 door_open_col = hole;
 
-if stage == 1 || stage == 3
+if stage == 1 || stage == 10 || stage == 3
 
     context_cols =  [base_context_learn(1, :); ... % colours are randomly assigned
                      base_context_learn(2, :); % 
@@ -376,7 +382,7 @@ end
 SetMouse(xCenter, yCenter, window);
 
 % things to collect during the experiment
-if stage == 1 || stage == 3
+if stage == 1 || stage == 10 || stage == 3
     moves_record = [];
     moves_goal = 4;
 end
@@ -554,8 +560,8 @@ for count_trials = 1:length(trials(:,1))
     end % end of search
 
     % feedback
-    if stage < 3
-        if stage == 1 
+    if stage < 3 || stage == 10
+        if stage == 1 || stage == 10
             feedback_on = 1;
         elseif stage == 2 && sum(reward_trials == count_trials)
             % is this a reward trial (i.e. find if count_trials exists in
@@ -660,7 +666,7 @@ for count_trials = 1:length(trials(:,1))
         WaitSecs(1);
     end
     
-    if stage < 3
+    if stage < 3 || stage == 10
         if any(mod(count_trials-n_practice_trials, breaks))
             break_time = 0;
         else
@@ -682,7 +688,7 @@ for count_trials = 1:length(trials(:,1))
     end
 
     if break_time
-        if stage == 1
+        if stage == 1 || stage == 10
             take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
                 breaks, backRect, xCenter, yCenter, screenYpixels, ...
                 tpoints, stage, points_structure, badge_rects, badge_textures);
@@ -706,7 +712,7 @@ for count_trials = 1:length(trials(:,1))
 %%%%%%%%%%%% if in stage 1, tally up how many doors they got it in and see
 %%%%%%%%%%%% if you can switch them to the next phase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if stage == 1 && house < 9
+if stage == 1 || stage == 10
 
     n_correct_required = 40; % 40, to give a greater probability of each door type appearing a good
     % number of times
@@ -719,7 +725,7 @@ if stage == 1 && house < 9
             break
         end
     end
-elseif stage == 1 && house == 9 || stage == 3
+elseif stage == 3
 
     moves_record = [moves_record, door_select_count];
 end % end stage 1 response tally
@@ -729,18 +735,31 @@ end
 % save the images used for the search task, in case we need in the future
 if stage == 1
     ses_str = 'learn';
+elseif stage == 10
+    ses_str = 'learn2';
 elseif stage == 2
     ses_str = 'train';
 elseif stage == 3
     ses_str = 'test';
 end
-if sub.num < 10
-    save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-', ses_str '/' ...
-        sprintf('sub-0%d_tgt_ids.mat', sub.num)], 'all_srch_fnames', '-mat');
+if stage == 1 || stage == 10
+    if sub.num < 10
+        save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-', ses_str '/' ...
+            sprintf('sub-0%d_tgt_ids_house%d.mat', sub.num, house)], 'all_srch_fnames', '-mat');
 
+    else
+        save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-', ses_str '/' ...
+            sprintf('sub-%d_tgt_ids_house%d.mat', sub.num, house)], 'all_srch_fnames', '-mat');
+    end
 else
-    save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-', ses_str '/' ...
-        sprintf('sub-%d_tgt_ids.mat', sub.num)], 'all_srch_fnames', '-mat');
+    if sub.num < 10
+        save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-', ses_str '/' ...
+            sprintf('sub-0%d_tgt_ids.mat', sub.num)], 'all_srch_fnames', '-mat');
+
+    else
+        save([sprintf('exp_%s', exp_code) '/' sub_dir '/' 'ses-', ses_str '/' ...
+            sprintf('sub-%d_tgt_ids.mat', sub.num)], 'all_srch_fnames', '-mat');
+    end
 end
 
 if stage == 3
@@ -765,12 +784,12 @@ Screen('CloseAll');
 
 %sprintf('total points = %d', tpoints)
 
-if stage == 1 && house < 9 &&  ~go
+if stage == 1 &&  ~go
     sprintf('achievement unlocked! proceed to next level')
-elseif stage == 1 && house < 9 && count_trials == length(trials(:,1))
+elseif stage == 10 &&  ~go
+    sprintf('achievement unlocked! proceed to next level')
+elseif stage == 1 && count_trials == length(trials(:,1))
     sprintf('accuracy criterion wasn`t reached this time, check next stage :(')
-elseif stage == 1 && house == 9
-    acc_house_1 = mean(moves_record(trials(:,2) == 1) <= moves_goal);
-    acc_house_2 = mean(moves_record(trials(:,2) == 2) <= moves_goal);
-    sprintf('house 1 acc: %.2f, house 2 acc: %.2f', acc_house_1, acc_house_2)
+elseif stage == 10 && count_trials == length(trials(:,1))
+    sprintf('accuracy criterion wasn`t reached this time, check next stage :(')
 end

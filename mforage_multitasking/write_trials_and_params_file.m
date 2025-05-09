@@ -5,13 +5,15 @@ function [trlg_fid] = write_trials_and_params_file(sub, stage, exp_code, trials,
 
 if stage == 1
     ses_str = 'learn';
+elseif stage == 10
+    ses_str = 'learn2';
 elseif stage == 2
     ses_str = 'train';
 elseif stage == 3
     ses_str = 'test';
 end
 
-if stage == 1
+if stage == 1 || stage == 10
     if sub < 10
         trlfname   = sprintf('sub-0%d_ses-%s_house-%d_task-mforage_trls.tsv', sub, ses_str, house);
     else
@@ -49,7 +51,7 @@ if size(trials,2) > 5 % then there is extra info we need to save
 end
 
 % save the subject parameters for this session 
-if stage == 1
+if stage == 1 || stage == 10
     if sub < 10
         sess_params_mat_name = [sprintf('exp_%s', exp_code), '/', sub_dir, sprintf('/ses-%s', ses_str), '/beh/', ...
             sprintf('sub-%0d-ses-%s_house-%d_task-mforage_sess-params', sub, ses_str, house)];

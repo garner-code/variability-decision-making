@@ -12,7 +12,7 @@ Screen('TextStyle', window, 1);
 Screen('TextSize', window, 30);
 instruct_col = [255 255 255];
 
-if stage == 1 || stage == 3
+if stage == 1 || stage == 10 || stage == 3
 
     load('punny');
     this_pun = punny{randperm(length(punny), 1)};
@@ -91,7 +91,7 @@ else
         'Press any key to continue.\n'], (count_trials/breaks), (ntrials/breaks));
 end
 
-if stage == 1 || stage == 3
+if stage == 1 || stage == 10 || stage == 3
     %%%% read in the break image files and randomly select one
     pics = dir('breakphotos');
     hidden_idx = [];

@@ -4,13 +4,15 @@ function [beh_form, beh_fid] = initiate_sub_beh_file(sub, sess_n, sub_dir, ...
 % settings
 if sess_n == 1
     ses_str = 'learn';
+elseif sess_n == 10
+    ses_str = 'learn2';
 elseif sess_n == 2
     ses_str = 'train';
 elseif sess_n == 3
     ses_str = 'test';
 end
 
-if sess_n == 1
+if sess_n == 1 || sess_n == 10
     if sub < 10
         fname   = sprintf('sub-0%d_ses-%s_house-%d_task-mforage_beh.tsv', ...
             sub, ses_str, house);

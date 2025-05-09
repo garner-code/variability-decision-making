@@ -5,13 +5,15 @@ function [trlg_fid] = write_trials_and_params_file(sub, stage, exp_code, trials,
 
 if stage == 1
     ses_str = 'learn';
+elseif stage == 10
+    ses_str = 'learn2';
 elseif stage == 2
     ses_str = 'train';
 elseif stage == 3
     ses_str = 'test';
 end
 
-if stage == 1
+if stage == 1 || stage == 10
     if sub < 10
         trlfname   = sprintf('sub-0%d_ses-%s_house-%d_task-mforage_trls.tsv', sub, ses_str, house);
     else

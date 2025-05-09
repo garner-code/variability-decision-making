@@ -4,6 +4,8 @@ exp_fol = sprintf('exp_%s', exp_code);
 
 if sess == 1
     ses_str = 'learn';
+elseif sess == 10
+    ses_str = 'learn2';
 elseif sess == 2
     ses_str = 'train';
 elseif sess == 3

@@ -3,18 +3,23 @@ function [rt, sub_resp] = run_memory_probe(prbs_on,window, edgeRect, backRect, .
                                             doors_closed_cols, ...
                                             xCenter, yCenter, prb_locs,...
                                             mem_tex, trial_start, resp, ...
-                                            time, screenYpixels)
+                                            time, screenYpixels, text_y_adj)
   waiting_for_resp = 1;
   vbl = prbs_on;
   resp_waitframes = 1;
+
+  %screenYpixels = screenYpixels; % legacy
+  %text_y_adj = text_y_adj; % legacy
 
   while waiting_for_resp
 
       draw_mts_tgts(window, edgeRect, backRect, ...
           edge_col, col, doorRects, doors_closed_cols,...
           xCenter, yCenter, prb_locs, mem_tex, trial_start);
-      DrawFormattedText(window, '`S` for SAME, `D` for DIFFERENT',...
-          'Center', screenYpixels*.1, [0 0 255]);
+      
+      instruct = '`S` for SAME, `D` for DIFFERENT';
+      DrawFormattedText(window, instruct,...
+          'Center', screenYpixels*text_y_adj, [0 0 255]);
       [~, secs, key_code] = KbCheck;
       if key_code(resp.same)
 

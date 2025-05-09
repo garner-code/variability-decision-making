@@ -35,7 +35,7 @@ clear mex
 % task, pc, matlab and psychtoolbox version, eeg system (amplifier, hardware filter, cap, placement scheme, sample
 % rate), red smi system, description of file structure
 %%%%%% manual things
-where = 0; % if 0, in lab, if 1, in office, if 2, at home
+where = 1; % if 0, in lab, if 1, in office, if 2, at home
 if ~where
     aud_device = [];
 elseif where == 1
@@ -50,7 +50,6 @@ sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
 %sub.tpoints = input('points? '); % enter points scored so far
 sub.tpoints = 0;
 sub.experiment = 'mt';
-
 exp_code = sub.experiment;
 sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
 
@@ -242,7 +241,7 @@ if stage == 1 || stage == 3
                      [0, 0, 0]]; % finish with practice context cols
 elseif stage == 2
 
-    context_cols =  [base_context_learn(1, :); ... % colours are randomly assigned
+    context_cols =  [base_context_learn(1, :); ... 
         base_context_learn(2, :); %
         [0, 0, 0]]; % finish with practice context cols
 end
@@ -302,6 +301,11 @@ backRect   = [0 0 base_pix base_pix];
 edge_pix   = 180*pix_per_mm*display_scale_edge;
 edgeRect   = [0 0 edge_pix edge_pix];
 
+% adjustment for moving in-trial instructions
+text_y_adj = 0.5105; %.25;
+text_y_adj_sd = .25;
+prompt_size = round(screenXpixels/2); % for changing the size of the prompt font
+prompt_scale = 40;
 % and door pixels for door rects (which are defined in draw_doors.m
 nDoors     = 16;
 doorPix    = 26.4*pix_per_mm*display_scale; % KG: MFORAGE: May want to change now not eyetracking
@@ -325,13 +329,16 @@ time.min_pre_mem_tgts = 0.5; % min duration between last probe and new mem tgts 
 time.max_pre_mem_tgts = 1.5; % max duration of above
 time.tgts_on = 2; % how long we'll keep the target stimuli on
 time.mem_period = 2;
-time.period_before_mem_disp = 0.25; % how long white border is shown before memory targets come up
+time.trial_instruct = 0.5; % how long white border/instruction is shown 
+time.pre_mem_wait = 0.25; % time between instructions and memory trials
 time.period_before_prb_disp = 0.25;
 %time.probes_time_out = 2; % how many seconds until time out on the working memory task
 time.feedback_on = 1;
 time.tgt_on = .35;
 frames.tgt_on_frames = round(time.tgts_on/time.ifi); % how many frames to keep memory tgts on for
 frames.mem_period = round(time.mem_period/time.ifi);
+frames.trial_instruct = round(time.trial_instruct/time.ifi);
+frames.pre_mem_wait = round(time.pre_mem_wait/time.ifi);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
@@ -423,15 +430,26 @@ for count_trials = 1:length(trials(:,1))
     %%%%%% run trial
     % is it a trial on which to present memory targets? if so, present
     if stage == 3
-        if mem_tgts
+        if mem_tgts == 1
 
             % put up the memory display so people have a moment or two to
             % orient to the new task
+            Screen ('TextSize',window,prompt_size/prompt_scale);
+            instruct_text = 'Memory + Search';
+            
             draw_edge(window, edgeRect, xCenter, yCenter,  memory_colour, 0, time.context_cue_on);
             draw_background(window, backRect, xCenter, yCenter, col);
             draw_doors(window, doorRects, doors_closed_cols);
-            Screen('Flip', window);
-            WaitSecs(time.period_before_mem_disp);
+            DrawFormattedText(window, instruct_text,...
+                'Center', screenYpixels*text_y_adj, [255 255 255]);
+            instruct_on = Screen('Flip', window);
+            %WaitSecs(time.period_before_mem_disp);
+
+            draw_edge(window, edgeRect, xCenter, yCenter,  memory_colour, 0, time.context_cue_on);
+            draw_background(window, backRect, xCenter, yCenter, col);
+            draw_doors(window, doorRects, doors_closed_cols);
+            instruct_off = Screen('Flip', window, instruct_on + (frames.trial_instruct - 0.5) * time.ifi); % this should happen at the end of the waitsecs period
+            %WaitSecs(time.period_before_mem_disp);
 
             counting_mem_trls(mem_cntxt) = counting_mem_trls(mem_cntxt) + 1;
             % get target and probe locations for this trial
@@ -440,7 +458,7 @@ for count_trials = 1:length(trials(:,1))
             prb_locs = mts_trials_cell{mem_cntxt}...
                 (counting_mem_trls(mem_cntxt),mts_ref_prb_locs);
 
-            % get some target identities and draw the images
+            % get some target identities and draw the images to textures
             [mem_tex, mem_im_fnames] = draw_memory_textures_for_trial(window, ...
                     mts_tgts, n_tgts_per_cat_per_trial);
             all_mem_fnames(count_trials, :) = mem_im_fnames;
@@ -451,14 +469,37 @@ for count_trials = 1:length(trials(:,1))
             % draw targets and start
             draw_mts_tgts(window, edgeRect, backRect, ...
                 memory_colour, col, doorRects, doors_closed_cols,...
-                xCenter, yCenter, tgt_locs, mem_tex, trial_start);
-            tgts_on = Screen('Flip', window);
+                xCenter, yCenter, tgt_locs, mem_tex, trial_start);        
+            tgts_on = Screen('Flip', window, instruct_off + (frames.pre_mem_wait - 0.5) * time.ifi); % this should happen at the end of the post instruct period
 
-            % draw doors closed and present at the start of the memory delay period
+            % draw doors closed ready for trial
             draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on);
             draw_background(window, backRect, xCenter, yCenter, col);
             draw_doors(window, doorRects, doors_closed_cols);
             mem_delay_on = Screen('Flip', window, tgts_on + (frames.tgt_on_frames - 0.5) * time.ifi);
+
+
+
+        elseif mem_tgts == 2
+            % put up the memory display so people have a moment or two to
+            % orient to the new task
+            instruct_text = 'Just search';
+            Screen ('TextSize',window,prompt_size/prompt_scale);
+            draw_edge(window, edgeRect, xCenter, yCenter,  memory_colour, 0, time.context_cue_on);
+            draw_background(window, backRect, xCenter, yCenter, col);
+            draw_doors(window, doorRects, doors_closed_cols);
+            DrawFormattedText(window, instruct_text,...
+                'Center', screenYpixels*text_y_adj, [255 255 255]);               
+            instruct_on = Screen('Flip', window);
+            %WaitSecs(time.period_before_mem_disp);
+
+            % arb_timer = GetSecs;
+            % draw doors closed ready for trial
+            draw_edge(window, edgeRect, xCenter, yCenter, edge_col, 0, time.context_cue_on);
+            draw_background(window, backRect, xCenter, yCenter, col);
+            draw_doors(window, doorRects, doors_closed_cols);
+            %mem_delay_on = Screen('Flip', window, arb_timer + (frames.tgt_on_frames - 0.5) * time.ifi);
+            Screen('Flip', window, instruct_on + (frames.trial_instruct - 0.5) * time.ifi);
         end
     end
    
@@ -557,18 +598,21 @@ for count_trials = 1:length(trials(:,1))
 
     % now if its a mem probe trial, get the probe locations and draw
     if stage == 3
-        if mem_prb
+        if mem_prb == 1
 
             draw_edge(window, edgeRect, xCenter, yCenter,  memory_colour, 0, time.context_cue_on);
             draw_background(window, backRect, xCenter, yCenter, col);
             draw_doors(window, doorRects, doors_closed_cols);
             Screen('Flip', window);
             WaitSecs(time.period_before_prb_disp);
+
             draw_mts_tgts(window, edgeRect, backRect, ...
                 memory_colour, col, doorRects, doors_closed_cols,...
                 xCenter, yCenter, prb_locs, mem_tex, trial_start);
-            DrawFormattedText(window, '`S` for SAME, `D` for DIFFERENT',...
-                'Center', screenYpixels*.1, [0 0 255]);
+            instruct = '`S` for SAME, `D` for DIFFERENT';
+            Screen('TextSize',window,prompt_size/prompt_scale);
+            DrawFormattedText(window, instruct,...
+                'Center', screenYpixels*text_y_adj_sd, [0 0 255]);
             prbs_on = Screen('Flip', window);
             % now poll for the response
             [rt, sub_resp] = run_memory_probe(prbs_on, window, edgeRect, backRect, ...
@@ -576,7 +620,7 @@ for count_trials = 1:length(trials(:,1))
                 doors_closed_cols, ...
                 xCenter, yCenter, prb_locs,...
                 mem_tex, trial_start, resp, ...
-                time, screenYpixels);
+                time, screenYpixels, text_y_adj_sd);
             % update trial info into log file
             fprintf(mts_fid, mts_form, sub.num, stage, count_trials, ...
                 mem_cntxt, tgts_on, prbs_on, sub_resp, ...
@@ -593,6 +637,16 @@ for count_trials = 1:length(trials(:,1))
             Screen('Flip', window);
             WaitSecs(wait_time);
             Screen('Close', mem_tex);
+
+        elseif mem_prb == 2
+            wait_time = (time.max_pre_mem_tgts-time.min_pre_mem_tgts)*rand(1) ...
+                + time.min_pre_mem_tgts;
+            % draw the display with the white border
+            draw_edge(window, edgeRect, xCenter, yCenter,  memory_colour, 0, time.context_cue_on);
+            draw_background(window, backRect, xCenter, yCenter, col);
+            draw_doors(window, doorRects, doors_closed_cols);
+            Screen('Flip', window);
+            WaitSecs(wait_time);
         end
 
     end

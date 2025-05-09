@@ -41,6 +41,11 @@ for i = 1:length(end_idx)
         collect_trial_blocks{1,i}(size(collect_trial_blocks{1,i},1),dt_end_col) = 1;
         collect_trial_blocks{2,i}(1,dt_strt_col) = 1;
         collect_trial_blocks{2,i}(size(collect_trial_blocks{2,i},1),dt_end_col) = 1;
+    else
+        collect_trial_blocks{1,i}(1,dt_strt_col) = 2;
+        collect_trial_blocks{1,i}(size(collect_trial_blocks{1,i},1),dt_end_col) = 2;
+        collect_trial_blocks{2,i}(1,dt_strt_col) = 2;
+        collect_trial_blocks{2,i}(size(collect_trial_blocks{2,i},1),dt_end_col) = 2;
     end
 end
 

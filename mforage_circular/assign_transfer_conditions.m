@@ -19,6 +19,6 @@ function [sub, complete_idxs, hybrid_idxs] = assign_transfer_conditions(sub, ...
     inner = [6, 7, 10, 11]; % inner
     
     hybrid_idxs = [datasample(ca_idxs, 2, 'Replace', false), ...
-                         datasample(cb_idxs, 2, 'Replace', false)];
+                   datasample(cb_idxs, 2, 'Replace', false)];
 
 end

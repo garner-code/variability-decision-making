@@ -44,9 +44,6 @@ experiment = sub.experiment;
 exp_code = sub.experiment;
 
 sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
-% sub.hand = input('left or right hand? (1 or 2)?');
-% sub.sex = input('sub sex (note: not gender)? (1=male,2=female,3=inter)');
-% sub.age = input('sub age?');
 
 % get sub info for setting up counterbalancing etc
 % sub infos is a matrix with the following columns
@@ -227,7 +224,7 @@ pix_per_mm = screenYpixels/monitorYdim;
 display_scale = 1; % VARIABLE TO SCALE the display size
 %%%%%%%%%%%%
 % define circles that will be used in the display
-% will use Screen(‘DrawDots’, windowPtr, xy [,size] [,color]);
+% will use Screen( DrawDots[, windowPtr, xy [,size] [,color] [,center] [,dot_type]);
 % xy = two-row vector containing the x and y coordinates of the dot centers, relative to "center”
 % size = diameter of the circle, in pixels, can be a vector
 % colour = you can provide a 3 or 4 row vector,which specifies an individual RGB or RGBA color
@@ -235,12 +232,16 @@ display_scale = 1; % VARIABLE TO SCALE the display size
 % first, I define the main circle that everything will be drawn on
 r_main = 100*pix_per_mm*display_scale; % 100 mm
 r_edge = 104*pix_per_mm*display_scale; % for the coloured edge
-d_main = r_main*2;
-d_edge = r_edge*2;
+% setting up a rect for the main for using filloval instead
+d_base = [0, 0, r_main*2, r_main*2];
+d_cent = CenterRectOnPointd(d_base, xCenter, yCenter);
+d_edge = [0, 0, r_edge*2, r_edge*2];
+e_cent = CenterRectOnPointd(d_edge, xCenter, yCenter);
+
 main_col = [160 160 160]; % set up the colours of the doors
 %%%%%%%%%%% set up doors
 inner_r_mm = 30;
-n_innder = 8; % 8 doors on the inner ring
+n_inner = 8; % 8 doors on the inner ring
 outer_r_mm = 70;
 n_outer = 16; % 16 doors on the outer ring
 ndoors = n_inner + n_outer;
@@ -262,6 +263,9 @@ r = door_size/2; % radius is the distance from center to the edge of the door
 fix_r_mm = 5*pix_per_mm*display_scale;
 d_fix = fix_r*2;
 fix_col = [0, 0, 0];
+
+% make all target categories available for the task
+srch_tgts = 1:4;
 
 % timing 
 time.ifi = Screen('GetFlipInterval', window);
@@ -307,8 +311,8 @@ if stage == 1
     moves_goal = 6;
 end
 tpoints = sub.tpoints;
-
 exp_start = Screen('Flip', window); 
+
 for count_trials = 1:length(trials(:,1))
 
  
@@ -324,6 +328,11 @@ for count_trials = 1:length(trials(:,1))
     tgt_loc = trials(count_trials, 3);
     tgt_flag = tgt_loc; %%%% where is the target
     door_select_count = 0; % track how many they got it in
+    % draw the target texture for the current trial
+    if count_trials > 1
+        Screen('Close', srch_tex);
+    end
+    [srch_tex, ~] = make_search_texture(srch_tgts, window);
     
     % set context colours according to condition
     edge_col = context_cols(trials(count_trials, 2), :); % KG: select whether it is context 1 or 2
@@ -332,12 +341,12 @@ for count_trials = 1:length(trials(:,1))
     %%%%%% run trial
     tgt_found = 0;
    
-    draw_fix(window, xCenter, yCenter, d_main, main_col, d_fix, fix_col)
+    draw_fix(window, xCenter, yCenter, d_cent, main_col, d_fix, fix_col)
     vbl = Screen('Flip', window);
     fix_hit = 0;
 
     while ~any(fix_hit)
-        draw_fix(window, xCenter, yCenter, d_main, main_col, d_fix, fix_col);
+        draw_fix(window, xCenter, yCenter, d_cent, main_col, d_fix, fix_col);
         Screen('DrawingFinished', window);
         vbl = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi); % limit samples to flip rate
 
@@ -353,8 +362,8 @@ for count_trials = 1:length(trials(:,1))
 
     % now start the trial!
     % Screen(‘DrawDots’, windowPtr, xy [,size] [,color]);
-    draw_back_doors(window, xCenter, yCenter, d_edge, edge_col, ...
-        d_main, main_col, door_xys, door_size, doors_closed_cols);
+    draw_back_doors(window, e_cent, edge_col, ...
+        d_cent, main_col, door_xys, door_size, doors_closed_cols);
     %%%%% CIRC check if I need this to be here or not, commented out for
     %%%%% now
 %    trial_start = Screen('Flip', window); % use this time to determine the time of target onset
@@ -366,8 +375,8 @@ for count_trials = 1:length(trials(:,1))
             
             % poll what the mouse is doing, until a door is opened
             [didx, door_on_flag, x, y] = query_door_select(door_on_flag, window, ...
-                xCenter, yCenter, ...
-                edge_col, main_col, ...
+                e_cent, edge_col, ...
+                d_cent, main_col, ...
                 door_xys, door_size, door_closed_cols, ...
                 beh_fid, beh_form, ...
                 sub.num, sub.stage,...
@@ -388,7 +397,8 @@ for count_trials = 1:length(trials(:,1))
            % door
             
             % didx & tgt_flag info are getting here
-            [tgt_found, didx, door_on_flag] = query_open_door(trial_start, sub.num, sub.stage, ...
+            [tgt_found, didx, door_on_flag] = query_open_door(trial_start, ...
+                sub.num, sub.stage, ...
                 count_trials, trials(count_trials,2), ...
                 door_ps(trials(count_trials,2), :), ...
                 tgt_flag, ...
@@ -418,19 +428,20 @@ for count_trials = 1:length(trials(:,1))
         feedback_on = 0;
     end
 
-    [points, tgt_on] = draw_target_v2(window, edgeRect, backRect, edge_col, col, ...,
-                        doorRects, doors_closed_cols, didx, ...
-                        trials(count_trials,5), xCenter, yCenter, time.context_cue_on, ...
-                        trial_start, door_select_count, feedback_on, ...
-                        screenYpixels, coin_handles);
+    [points, tgt_on] = draw_target_v2(window, ...
+                        e_cent, edge_col, ...
+                        d_cent, main_col, ...
+                        door_xys, door_size, door_closed_cols, ...
+                        didx, srch_tex, ...
+                        door_select_count, feedback_goal, feedback_on, ...
+                        coin_handles);
         [~,~,buttons] = GetMouse(window);
     while buttons(button_idx)
         [~,~,buttons] = GetMouse(window);
     end
-    %%%%%%%% CIRC - round here I need to add the code that draws the
-    %%%%%%%% texture for the next trial, borrowing from the flexibility
-    %%%%%%%% study. This will have to include code that makes a circular
-    %%%%%%%% mask and applies it to the square image
+
+
+
     if stage == 3 && experiment == 1
     else
        wait_on = GetSecs;

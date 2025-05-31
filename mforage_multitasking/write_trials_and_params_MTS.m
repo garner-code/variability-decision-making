@@ -15,7 +15,7 @@ else
 end
 
 % define trial log file
-ncol2save = 9; % in all cases, we want to save 5 columns of trials to the trial log
+ncol2save = size(trials,2); % 
 trlg_fid = fopen([sprintf('exp_%s', exp_code), '/', sub_dir, sprintf('/ses-%s', ses_str), '/beh/' trlfname], 'w');
 fprintf(trlg_fid, '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n', ...
     'sub','sess','t','context','cres',...

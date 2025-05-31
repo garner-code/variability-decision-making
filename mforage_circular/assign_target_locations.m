@@ -4,6 +4,17 @@ function [sub, ca_idxs, cb_idxs] = assign_target_locations(sub)
     %%%% selected target loactions to doors, with the following constraints
     %%%% - 1 door in each quadrant, 2 are outer, 2 are inner
     
+
+    %%%%% GET THE DOOR INFO
+    all_outer = 1:16;
+    outer = {1:4, 5:8, 9:12, 13:16}; % see run_iforage and door_setup for why these idxs 
+    inner = {17:18, 19:20, 21:22, 23:24}; 
+
+    % first, draw 4 from the outers
+    n_outer = length(outer{1}); % total n to draw from the outers
+    taskA_out_idxs = randperm(n_outer); % this is the idx of the door we take from each outer segment
+    % now I calculate the gaps between each segment
+    taskA_dists = taskA_out_idxs(1:n_outer) + [taskA_out_idxs(2:n_outer), taskA_out_idxs(1)]
     
     % note that the below variables could be shifted to be inputs in future
     % iterations of the task

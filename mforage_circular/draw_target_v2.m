@@ -4,7 +4,7 @@ function [points, tgt_on] = draw_target_v2(window, ...
     door_xys, door_size, doors_closed_cols, ...
     didx, srch_tex, ...
     door_select_count, feedback_goal, feedback_on, ...
-    coin_handles)
+    coin_handles, where)
 % this function draws the target to the selected door
 % and if appropriate, plays feedback
 
@@ -36,8 +36,10 @@ draw_back_doors(window, e_cent, edge_col, ...
 Screen('DrawTexture', window, srch_tex, [], im_cent);
 
 % start sound and draw the target
-if points > 0
-    PsychPortAudio('Start', coin_handles{points}, 1, 0, 0);
+if where
+    if points > 0
+        PsychPortAudio('Start', coin_handles{points}, 1, 0, 0);
+    end
 end
 tgt.vbl = Screen('Flip', window);
 tgt_on = tgt.vbl;

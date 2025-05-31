@@ -25,6 +25,8 @@ sca
 clear all
 clear mex
 
+where = 0; % office
+%where = 1; % lab
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % session settings
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -37,6 +39,11 @@ clear mex
 %%%%%% manual things
 sub.num = input('sub number? ');
 sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
+if sub.stage == 3
+    sub.transfer_block = input('transfer block? 1, 2, or 3...');
+else
+    sub.transfer_block = 0;
+end
 sub.tpoints = 0; % enter points scored so far
 sub.experiment = 'circ';
 
@@ -46,15 +53,14 @@ exp_code = sub.experiment;
 sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
 
 % get sub info for setting up counterbalancing etc
-% sub infos is a matrix with the following columns
-% sub num, group, learning counterbalancing (1 [XY] vs 2 [YX]), 
-% training counterbalancing (1 [XY] vs 2 [YX] vs 3 [.2switch]),
-% test counterbalancing (something) %%% KG: will possibly add experiment in
-% here also
+load('sub_info.mat')
+sub_config = sub_info(sub.num);
+clear('sub_info');
+
 version   = 1; % change to update output files with new versions
 stage = sub.stage;
 % set randomisation seed based on sub/sess number
-r_num = [num2str(sub.num) num2str(sub.stage)];
+r_num = [num2str(sub.num) num2str(sub.stage) num2str(sub.transfer_block)];
 r_num = str2double(r_num);
 rand('state',r_num);
 randstate = rand('state');
@@ -63,9 +69,6 @@ randstate = rand('state');
 %%%% generate trial structure for participants and setup log files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%% CIRC - this will change
-load('sub_infos.mat'); % matrix of counterbalancing info
-% see generate_sub_info_mat for details
-sub_config = sub_infos(sub.num, :);
 
 if stage == 1
     sub.house = input('house number? 1 or 2 or 9 '); % 1 for the first house, 2 for house 2, 9 to go through both
@@ -73,84 +76,102 @@ if stage == 1
 else
     house = 0; % not relevant because we are mixing up the houses, so set to zero
 end
-[beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, sub_dir, exp_code, house); % this is the behaviour and the events log
+[beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, ...
+    sub.transfer_block, sub_dir, exp_code, house); % this is the behaviour and the events log
 
-
-% probabilities of target location and number of doors
-%%%%%%%%% CIRC - will need to change this
-load('probs_cert_world_v2.mat'); % this specifies that there are 4 doors with p=0.25 each 
-door_probs   = probs_cert_world;
-clear probs_cert_world 
+% % probabilities of target location and number of doors
+% this is to future proof against when we want to vary probabilities
+ndoors_w_tgt = 6; % 6 doors per task in this iteration
+ndoors_wo_tgt = 24-ndoors_w_tgt;
+door_probs = [repmat(1/ndoors_w_tgt, 1, ndoors_w_tgt), ...
+              repmat(0, 1, ndoors_wo_tgt)];
+ndoors = length(door_probs);
 
 %%%%%%%%% CIRC - need to change
 if stage == 1 && house < 9% if its initial learning
+
     n_practice_trials = 5;
-    ntrials = 200; % KG: MFORAGE - max per context
-    [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house);    
+    ntrials = 300; % allows 50 exposures to each target location
+    trials = generate_trial_structure_learn(ntrials, sub_config, ...
+        door_probs, house);    
+
 elseif stage == 1 && house == 9
 
     n_practice_trials = 0;
-    ntrials = 80; % KG: MFORAGE - max per context
-    [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house); 
+    ntrials = 120; 
+    trials = generate_trial_structure_learn(ntrials, sub_config, ...
+        door_probs, house); 
 
-elseif stage == 2
-    n_practice_trials = 0;
-    ntrials = 4*40; % must have whole integers for p=.7/.3 or .95/.05
-    lo_switch = .05;
-    hi_switch = .3;
-    if sub_config(2) == 1
-        switch_prob = lo_switch;
-    elseif sub_config(2) == 2
-        switch_prob = hi_switch;
-    end
-    max_reward_trials = ntrials - (ntrials*hi_switch); % 
-    [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
+% elseif stage == 2
 
-    % now allocate 50 % of the switch trials to be reward available trials
-    reward_trials = find(~diff(trials(:,2)))+1;
-    n_reward_trials = min(max_reward_trials, round(length(reward_trials)/2));
-    reward_trials = datasample(reward_trials, n_reward_trials, 'Replace',false);
-    reward_trials = sort(reward_trials, 'ascend');
-elseif stage == 3
-    n_practice_trials = 0;
-    if experiment == 1
-        ntrials = 4*20;
-        switch_prob = .5;
-        [trials, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_config, door_probs, switch_prob);
-    elseif experiment == 2
-        ntrials = 4*10;
-        n_trials_per_transfer_type = ntrials;
-        [trials, ca_ps, cb_ps] = generate_trial_structure_lttest(ntrials, sub_config, door_probs);
-    end
+%     n_practice_trials = 0;
+%     ntrials = 4*40; % must have whole integers for p=.7/.3 or .95/.05
+%     lo_switch = .05;
+%     hi_switch = .3;
+%     if sub_config(2) == 1
+%         switch_prob = lo_switch;
+%     elseif sub_config(2) == 2
+%         switch_prob = hi_switch;
+%     end
+%     max_reward_trials = ntrials - (ntrials*hi_switch); % 
+%     [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
+% 
+%     % now allocate 50 % of the switch trials to be reward available trials
+%     reward_trials = find(~diff(trials(:,2)))+1;
+%     n_reward_trials = min(max_reward_trials, round(length(reward_trials)/2));
+%     reward_trials = datasample(reward_trials, n_reward_trials, 'Replace',false);
+%     reward_trials = sort(reward_trials, 'ascend');
+% elseif stage == 3
+%     n_practice_trials = 0;
+%     if experiment == 1
+%         ntrials = 4*20;
+%         switch_prob = .5;
+%         [trials, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_config, door_probs, switch_prob);
+%     elseif experiment == 2
+%         ntrials = 4*10;
+%         n_trials_per_transfer_type = ntrials;
+%         [trials, ca_ps, cb_ps] = generate_trial_structure_lttest(ntrials, sub_config, door_probs);
+%     end
 end
 
+% now for each stage, form a matrix of the door probabilities, relevant to
+% that session
+door_ps = zeros(3, ndoors);
+
 if stage == 1
+    
+    task_a_doors = unique(trials(trials(:,2) == 1,3));
+    task_b_doors = unique(trials(trials(:,2) == 2,3));
     if house == 1
-        door_ps = [ca_ps; zeros(1, length(ca_ps)); repmat(1/length(ca_ps), 1, length(ca_ps))];
+
+        door_ps(1,task_a_doors) = max(door_probs);
     elseif house == 2
-        door_ps = [zeros(1, length(ca_ps)); ca_ps; repmat(1/length(ca_ps), 1, length(ca_ps))];
+
+        door_ps(2, task_b_doors) = max(door_probs);
     else
-        door_ps = [ca_ps(1,:); ca_ps(2,:); repmat(1/length(ca_ps(1,:)), 1, length(ca_ps(1,:)))];
+
+        door_ps(1,task_a_doors) = max(door_probs);
+        door_ps(2, task_b_doors) = max(door_probs);
     end
 else
-        door_ps = [ca_ps; cb_ps; repmat(1/length(ca_ps), 1, length(ca_ps))]; % create a tt x door matrix for display referencing later
+      %  door_ps = [ca_ps; cb_ps; repmat(1/length(ca_ps), 1, length(ca_ps))]; % create a tt x door matrix for display referencing later
 end
 
 % add the 5 practice trials to the start of the matrix
 if stage == 1 && house == 1
     practice = [ repmat(999, n_practice_trials, 1), ...
         repmat(3, n_practice_trials, 1), ...
-        datasample(1:16, n_practice_trials)', ...
+        datasample(1:ndoors, n_practice_trials)', ...
         repmat(999, n_practice_trials, 1), ...
-        datasample(1:100, n_practice_trials)'];
+        repmat(NaN, n_practice_trials, 1)];
     trials   = [practice; trials];
 end
 
-write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
-    door_probs, sub_config, door_ps, sub_dir, house);
+write_trials_and_params_file(sub.num, stage, exp_code, ...
+    sub.transfer_block, house, ...
+    trials, ...
+    door_probs, sub_config, sub_dir);
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% define colour settings for worlds
@@ -159,35 +180,41 @@ write_trials_and_params_file(sub.num, stage, exp_code, trials, ...
 % Context cue goes around the edge and will need something defined
 
 % first put the colours in order of the counterbalancing
-green = [27, 158, 119]; 
-orange = [217, 95, 2];
-purple = [117, 112, 179];
-pink = [189, 41, 138]; 
-colour_options = {green, orange, purple, pink};
+green = [127, 201, 127]; 
+purple = [190, 174, 212];
+orange = [253, 192, 134];
+yellow = [255, 255, 153];
+pink = [240, 2, 127]; 
 
-base_context_learn = [colour_options{sub_config(19)}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
-                      colour_options{sub_config(20)}];
-transfer_context_learn = [colour_options{sub_config(21)}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
-                          colour_options{sub_config(22)}];
+colour_options = {green, purple, orange, yellow, pink};
+sub_colours = colour_options(sub_config.col_assign); % this means
+% that the sub_colours go [house1, house2, transfer1, transfer2, transfer3]
 
+base_context_learn = [sub_colours{1}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
+                      sub_colours{2}];
+transfer_context_learn = [sub_colours{3}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
+                          sub_colours{4};
+                          sub_colours{5}];
 if stage == 1
-    context_cols =  [base_context_learn(1, :); ... % colours are randomly assigned
-                     base_context_learn(2, :); % 
+    
+    context_cols =  [base_context_learn(1, :); 
+                     base_context_learn(2, :); 
                      [0, 0, 0]]; % finish with practice context cols
 elseif stage == 2
-    context_cols = [col; col; col];
+
+    neutral_col = [0, 0, 0];
+    context_cols = [neutral_col; neutral_col; neutral_col];
+
 elseif stage == 3
 
-    context_cols =  [base_context_learn(1, :); ...
-        base_context_learn(2, :);
-        col]; % for when there is no trial switch
+    context_cols =  transfer_context_learn;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% other considerations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-breaks = 40; % how many trials inbetween breaks?
+breaks = 30; % how many trials inbetween breaks?
 count_blocks = 0;
 button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
 
@@ -199,8 +226,10 @@ KbCheck;
 KbName('UnifyKeyNames');
 GetSecs;
 AssertOpenGL
-Screen('Preference', 'SkipSyncTests', 1);
-%PsychDebugWindowConfiguration;
+if ~where
+    Screen('Preference', 'SkipSyncTests', 1);
+    PsychDebugWindowConfiguration;
+end
 monitorXdim = 530; % in mm % KG: MFORAGE: GET FOR UNSW MATTHEWS MONITORS
 monitorYdim = 300; % in mm
 screens = Screen('Screens');
@@ -251,7 +280,7 @@ ndoors = n_inner + n_outer;
 
 %%% door colours
 hole = [20, 20, 20];
-doors_closed_cols = repmat([96, 96, 96]', 1, ndoors); 
+door_closed_cols = repmat([96, 96, 96]', 1, ndoors); 
 door_open_col = hole;
 
 %door_cols = rep
@@ -261,43 +290,46 @@ r = door_size/2; % radius is the distance from center to the edge of the door
 
 % and finally, the details for the fixation point
 fix_r_mm = 5*pix_per_mm*display_scale;
-d_fix = fix_r*2;
+d_fix = fix_r_mm*2;
 fix_col = [0, 0, 0];
 
 % make all target categories available for the task
 srch_tgts = 1:4;
 
+% and make a rect for presenting the break images
+base_pix   = 180*pix_per_mm*display_scale; 
+backRect   = [0 0 base_pix base_pix];
+
 % timing 
 time.ifi = Screen('GetFlipInterval', window);
 time.frames_per_sec = round(1/time.ifi);
 time.context_cue_on = round(1000/time.ifi); % made arbitrarily long so it won't turn off
-time.wait_after_fix = round(0.4/time.ifi);
+time.wait_after_fix = 0.4;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% setting up sound for feedback
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%% CIRC - tidy this up based on targets
-InitializePsychSound; % in case PC doesn't have .dll file
-% coin sound
-win_sounds = dir('win');
-% remove hidden files
-hidden_index = [];
-for ihid = 1:length(win_sounds)
-    if length(win_sounds(ihid).name) < 5
-        hidden_index = [hidden_index, ihid];
+
+if where
+    InitializePsychSound; % in case PC doesn't have .dll file
+    % coin sound
+    win_sounds = dir('win');
+    % remove hidden files
+    win_sounds = win_sounds(arrayfun(@(x) x.name(1) ~= '.',...
+        win_sounds));
+    % now read in mp3 files
+    coin_handles = cell(1, numel(length(win_sounds)));
+    for imp3 = 1:length(win_sounds)
+        mp3fname = fullfile(win_sounds(imp3).folder, win_sounds(imp3).name);
+        [y, freq] = audioread(mp3fname);
+        coin_handles{imp3} = PsychPortAudio('Open', [], [], 0, freq, size(y, 2)); % get handle
+        PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
     end
+    % Playback once at start
+    PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
+else
+    coin_handles = 0;
 end
-win_sounds(hidden_index) = [];
-% now read in mp3 files
-coin_handles = cell(1, numel(length(win_sounds)));
-for imp3 = 1:length(win_sounds)
-    mp3fname = fullfile(win_sounds(imp3).folder, win_sounds(imp3).name);
-    [y, freq] = audioread(mp3fname);
-    coin_handles{imp3} = PsychPortAudio('Open', [], [], 0, freq, size(y, 2)); % get handle
-    PsychPortAudio('FillBuffer', coin_handles{imp3}, y'); % fill buffer with sound
-end
-% Playback once at start
-PsychPortAudio('Start', coin_handles{1}, 1, 0, 1);
 feedback_goal = 6;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%% now we're ready to run through the experiment
@@ -311,7 +343,8 @@ if stage == 1
     moves_goal = 6;
 end
 tpoints = sub.tpoints;
-exp_start = Screen('Flip', window); 
+trial_start = Screen('Flip', window); % use this to record relative timings 
+% throughout experiment
 
 for count_trials = 1:length(trials(:,1))
 
@@ -335,7 +368,8 @@ for count_trials = 1:length(trials(:,1))
     [srch_tex, ~] = make_search_texture(srch_tgts, window);
     
     % set context colours according to condition
-    edge_col = context_cols(trials(count_trials, 2), :); % KG: select whether it is context 1 or 2
+    edge_col = context_cols(trials(count_trials, 2), :); % select colour for 
+    % context 1 or context 2
            
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%% run trial
@@ -363,11 +397,8 @@ for count_trials = 1:length(trials(:,1))
     % now start the trial!
     % Screen(‘DrawDots’, windowPtr, xy [,size] [,color]);
     draw_back_doors(window, e_cent, edge_col, ...
-        d_cent, main_col, door_xys, door_size, doors_closed_cols);
-    %%%%% CIRC check if I need this to be here or not, commented out for
-    %%%%% now
-%    trial_start = Screen('Flip', window); % use this time to determine the time of target onset
-    
+        d_cent, main_col, door_xys, door_size, door_closed_cols);
+ 
     while ~any(tgt_found)
         
         door_on_flag = 0; % poll until a door has been selected
@@ -402,9 +433,9 @@ for count_trials = 1:length(trials(:,1))
                 count_trials, trials(count_trials,2), ...
                 door_ps(trials(count_trials,2), :), ...
                 tgt_flag, ...
-                window, xCenter, yCenter, ...
-                d_edge, edge_col, ...
-                d_main, main_col, ...
+                window, ...
+                e_cent, edge_col, ...
+                d_cent, main_col, ...
                 door_xys, door_size, door_closed_cols, ...
                 door_open_col, didx, ...
                 x, y, button_idx, ...
@@ -434,7 +465,7 @@ for count_trials = 1:length(trials(:,1))
                         door_xys, door_size, door_closed_cols, ...
                         didx, srch_tex, ...
                         door_select_count, feedback_goal, feedback_on, ...
-                        coin_handles);
+                        coin_handles, where);
         [~,~,buttons] = GetMouse(window);
     while buttons(button_idx)
         [~,~,buttons] = GetMouse(window);
@@ -475,7 +506,7 @@ for count_trials = 1:length(trials(:,1))
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if stage == 1 && house < 9
 
-    n_correct_required = 40; % 40, to give a greater probability of each door type appearing a good
+    n_correct_required = 60; % 60, to give a greater probability of each door type appearing a good
     % number of times
     moves_record = [moves_record, door_select_count];
 

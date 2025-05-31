@@ -1,65 +1,72 @@
-%%%% this script creates the matrix of target location/condition
-%%%% assignments across participants
+%%%% this script creates the sub config info that drives the task,
+%%%% for all subjects. Out put is a 1:n_subs structure with the following:
+%%%% sub_info(id).sub_id = id
+%%%% sub_info(id).grp
+%%%% sub_info(id).tasks
+%%%% sub_info(id).frst (A first or B first, for learning)
+%%%% sub_info(id).trnsfr_order (see below)
+%%%% sub_info(id).col_assign (randomly assigned colour idxs 1:5)
 clear all
-nsubs = 128;
 
-sub_infos = zeros(nsubs/2, 24); % 22 cols, 1 & 2 = sub and group, 3:6 = ca_idxs, 
-% 7:10 = cb_idxs, 11:14 = cc_idxs, 15:18 = cd_idxs, 19:22 = colour context
-% assignment,
-% 23 - do you have A or B for complete transfer?
-% 24 - do you do complete or hybrid transfer first?
+% counterbalancing:
+% house learned 1st: A B vs B A
+% order of transfer: 1 2 3
+%                    1 3 2
+%                    2 1 3
+%                    2 3 1
+%                    3 1 2
+%                    3 2 1
+% so 6 x 2 = 12 replications of each set of tasks
+% repeated per group therefore 24
+% then we want enough task sets to get up to 48 participants per group
+% so we only need to make 4 task sets for now
+% and I will make enough for now for 48 per group
 
-for isub = 1:4:nsubs/2
+n_per_grp = 48;
+n_grps = 2;
+nsubs = n_per_grp * n_grps;
 
-    % assign subject numbers
-    sub_infos(isub,1) = isub;
-    for iplus = 1:3
-        sub_infos(isub+iplus,1) = isub+iplus;
-    end
+% now I will generate all the task sets we need, given n et al
+n_task_sets_2_make = 4;
+for i = 1:n_task_sets_2_make
+    tasks(i) = assign_target_locations;
+end
 
-    sub_infos(isub:isub+1,2) = 1;
-    sub_infos(isub+2:isub+3,2) = 2;
+% now I define the transfer orders as above
+order_of_transfer = [1, 2, 3; ...
+                     1, 3, 2; ...
+                     2, 1, 3; ...
+                     2, 3, 1; ...
+                     3, 1, 2; ...
+                     3, 2, 1];
+n_transfer_orders = size(order_of_transfer,1);
+% each of the tasks is going to be repeated 6 x 2 times, now define the 2
+% times
+frst_tsk = [1, 2]; % do you do A or B first?
 
-    [~, ca_idxs, cb_idxs] = assign_target_locations(isub);
+id = 1; % now cycle through tasks, the transfer orders, which task comes first,
+% and the groups, to get the info for each subject
+for i = 1:length(tasks)
 
-    % context a & b locations
-    sub_infos(isub, 3:6) = ca_idxs;
-    sub_infos(isub, 7:10) = cb_idxs;
-    for iplus = 1:3
-        sub_infos(isub+iplus, 3:6) = ca_idxs;
-        sub_infos(isub+iplus, 7:10) = cb_idxs;
-    end
-
-    % transfer counterbalancing (if happening)
-    sub_infos([isub,isub+2],23) = 1;
-    sub_infos([isub+1,isub+3],23) = 2;
-    for icomp = isub:isub+3
-        if sub_infos(icomp, 23) == 1
-            sub_infos(icomp,11:14) = ca_idxs;
-        elseif sub_infos(icomp, 23) == 2
-            sub_infos(icomp,11:14) = cb_idxs;
+    for i_trns = 1:n_transfer_orders
+        for i_frst = 1:length(frst_tsk)
+            for i_grp = 1:n_grps
+                sub_info(id).sub_id = id;
+                sub_info(id).grp = i_grp;
+                sub_info(id).tasks = tasks(i);
+                sub_info(id).frst = frst_tsk(i_frst);
+                sub_info(id).trnsfr_order = order_of_transfer(i_trns,:);
+                sub_info(id).col_assign = randperm(5);
+                id = id + 1;
+            end
         end
     end
 
-    % now get transfer locations    
-    [~, ~, hybrid_idxs] = assign_transfer_conditions(isub, ...
-            1, ca_idxs, cb_idxs);
-    for ihybrid = isub:isub+3
-        sub_infos(ihybrid,15:18) = hybrid_idxs;
-    end
+end % end for i:length(tasks)
 
-    % context colours
-    sub_infos(isub, 19:22) = randperm(4);
-    for iplus = 1:3
-        sub_infos(isub+iplus, 19:22) = sub_infos(isub, 19:22);
-    end
-    sub_infos(isub:isub+3,24) = 1; % meaning they get complete transfer first
+% sub info should be as long as nsub
+if length(sub_info) ~= nsubs
+    sprintf('problem! sub info has the wrong number of subjects')
 end
 
-tmp = sub_infos;
-tmp(:,1) = tmp(:,1)+(nsubs/2);
-tmp(:,24) = 2;
-
-sub_infos = [sub_infos; tmp];
-
-save('sub_infos', 'sub_infos')
+save('sub_info', 'sub_info')

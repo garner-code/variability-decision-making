@@ -1,5 +1,7 @@
-function [trlg_fid] = write_trials_and_params_file(sub, stage, exp_code, trials, ...
-    door_probs, sub_loc_config, door_ps, sub_dir, house)
+function [trlg_fid] = write_trials_and_params_file(sub, stage, ...
+    exp_code, transferN, house, ...
+    trials, ...
+    door_probs, sub_loc_config, sub_dir)
 
 % write a record of the trials and various params for this subject
 
@@ -13,15 +15,19 @@ end
 
 if stage == 1
     if sub < 10
-        trlfname   = sprintf('sub-0%d_ses-%s_house-%d_task-mforage_trls.tsv', sub, ses_str, house);
+        trlfname   = sprintf('sub-0%d_ses-%s_transfer-%d_house-%d_task-mforage_trls.tsv', ...
+            sub, ses_str, transferN, house);
     else
-        trlfname   = sprintf('sub-%d_ses-%s_house-%d_task-mforage_trls.tsv', sub, ses_str, house);
+        trlfname   = sprintf('sub-%d_ses-%s_transfer-%d_house-%d_task-mforage_trls.tsv', ...
+            sub, ses_str, transferN, house);
     end
 else
     if sub < 10
-        trlfname   = sprintf('sub-0%d_ses-%s_task-mforage_trls.tsv', sub, ses_str);
+        trlfname   = sprintf('sub-0%d_ses-%s_transfer-%d_task-mforage_trls.tsv', ...
+            sub, ses_str, transferN);
     else
-        trlfname   = sprintf('sub-%d_ses-%s_task-mforage_trls.tsv', sub, ses_str);
+        trlfname   = sprintf('sub-%d_ses-%s_transfer-%d_task-mforage_trls.tsv', ...
+            sub, ses_str, transferN);
     end
 end
 
@@ -35,22 +41,24 @@ fclose(trlg_fid);
 if stage == 1
     if sub < 10
         sess_params_mat_name = [sprintf('exp_%s', exp_code), '/', sub_dir, sprintf('/ses-%s', ses_str), '/beh/', ...
-            sprintf('sub-%0d-ses-%s_house-%d_task-mforage_sess-params', sub, ses_str, house)];
+            sprintf('sub-%0d-ses-%s_transfer-%d_house-%d_task-mforage_sess-params', ...
+            sub, ses_str, transferN, house)];
     else
         sess_params_mat_name = [sprintf('exp_%s', exp_code), '/', sub_dir, sprintf('/ses-%s', ses_str), ...
-            '/beh/', sprintf('sub-%d-ses-%s_house-%d_task-mforage_sess-params', sub, ses_str, house)];
+            '/beh/', sprintf('sub-%d-ses-%s_transfer-%d_house-%d_task-mforage_sess-params', ...
+            sub, ses_str, transferN, house)];
     end
 else
     if sub < 10
         sess_params_mat_name = [sprintf('exp_%s', exp_code), '/', sub_dir, sprintf('/ses-%s', ses_str), '/beh/', ...
-            sprintf('sub-%0d-ses-%s_task-mforage_sess-params', sub, ses_str)];
+            sprintf('sub-%0d-ses-%s_transfer-%d_task-mforage_sess-params', sub, ses_str, transferN)];
     else
         sess_params_mat_name = [sprintf('exp_%s', exp_code), '/', sub_dir, sprintf('/ses-%s', ses_str), ...
-            '/beh/', sprintf('sub-%d-ses-%s_task-mforage_sess-params', sub, ses_str)];
+            '/beh/', sprintf('sub-%d-ses-%s__transfer-%d_task-mforage_sess-params', sub, ses_str, transferN)];
     end
 end
 
 save(sess_params_mat_name, 'sub', 'trials', 'door_probs', ...
-                               'sub_loc_config', 'door_ps');
+                               'sub_loc_config');
 
 end

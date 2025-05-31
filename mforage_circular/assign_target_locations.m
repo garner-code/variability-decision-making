@@ -1,69 +1,38 @@
-function [sub, ca_idxs, cb_idxs] = assign_target_locations(sub)
+function [tasks] = assign_target_locations()
 
     %%%% ASSIGN_TARGET_LOACTIONS: for a given subject, assign randomly
     %%%% selected target loactions to doors, with the following constraints
     %%%% - 1 door in each quadrant, 2 are outer, 2 are inner
     
-
+    %%%%% FOR NOW: I AM MANUALLY PICKING 3 TASKS FOR EMILY TO RUN WITH IN
+    %%%%% THE FIRST WEEK. WILL COME BACK TO THIS
     %%%%% GET THE DOOR INFO
-    all_outer = 1:16;
-    outer = {1:4, 5:8, 9:12, 13:16}; % see run_iforage and door_setup for why these idxs 
-    inner = {17:18, 19:20, 21:22, 23:24}; 
+    % all_outer = 1:16;
+    % outer = {1:4, 5:8, 9:12, 13:16}; % see run_iforage and door_setup for why these idxs 
+    % inner = {17:18, 19:20, 21:22, 23:24}; 
+    task_a_out = [1, 6, 11, 14]; % 4 outer, and 2 inner
+    task_a_in = [18, 21];
+    task_b_out = [3, 5, 10, 16];
+    task_b_in = [20, 24];
+    task_c_out = [4, 7, 9, 15];
+    task_c_in = [17, 21];
 
-    % first, draw 4 from the outers
-    n_outer = length(outer{1}); % total n to draw from the outers
-    taskA_out_idxs = randperm(n_outer); % this is the idx of the door we take from each outer segment
-    % now I calculate the gaps between each segment
-    taskA_dists = taskA_out_idxs(1:n_outer) + [taskA_out_idxs(2:n_outer), taskA_out_idxs(1)]
-    
-    % note that the below variables could be shifted to be inputs in future
-    % iterations of the task
-    quadrants = 4;
-    n_outest = 1; % n tgts in outer corners per context
-    n_outmid = 2; % n tgts in outer but not corners per context
-    n_inner = 1; % n tgts in inner per context
-    
-    %%%%%%%%%% set the options for each type of door allocation
-    outest = [1, 4, 13, 16]; % outer corners
-    outmid = {[2, 5];... % outer but not a corner
-              [3, 8];...
-              [9, 14];...
-              [12, 15]};
-    inner = [6, 7, 10, 11]; % inner
+    tasks.a = [task_a_out, task_a_in];
+    tasks.b = [task_b_out, task_b_in];
+    tasks.novel = [task_c_out, task_c_in]; % novel task
 
-    assign_outer_to_a = datasample(1:quadrants, n_outest, 'Replace', false);
-    assign_outer_to_b = datasample(setdiff(1:quadrants, assign_outer_to_a), ...
-        n_outest, 'Replace', false);
-    assign_innest_to_a = datasample(setdiff(1:quadrants, assign_outer_to_a), ...
-        n_inner, 'Replace', false);
-    % now assign the inner for b, making sure it doesn't share a quadrant
-    % with the outer for b, and it also can't be the same as the innest for
-    % a
-    assign_innest_to_b = datasample(setdiff(1:quadrants, [assign_outer_to_b, ...
-        assign_innest_to_a]), n_inner, 'Replace', false);
-    % now two quadrants have been taken for both a and b, so get the
-    % remaining 2 for each context
-    assign_outmid_to_a = setdiff(1:quadrants, [assign_innest_to_a, assign_outer_to_a]);
-    assign_outmid_to_b = setdiff(1:quadrants, [assign_innest_to_b, assign_outer_to_b]);
-    %%%%%%%%%%%%%%
+    n_take_from_out = 2;
+    n_take_from_in = 1;
 
-    %%%%%%%%% now I have the assignments, I can start selecting target
-    %%%%%%%%% locations for each context
-    ca_idxs = zeros(1, quadrants);
-    cb_idxs = ca_idxs;
-
-    % now assign the tricky guys
-    for imid = 1:n_outmid
-        
-        ca_idxs(imid) = datasample(outmid{assign_outmid_to_a(imid)}, 1, 'Replace',false);
-        outmid{assign_outmid_to_a(imid)}(outmid{assign_outmid_to_a(imid)} == ca_idxs(imid)) = []; %now remove that guy because its not possible for other cfigs
-        cb_idxs(imid) = datasample(outmid{assign_outmid_to_b(imid)}, 1, 'Replace',false);
-        outmid{assign_outmid_to_b(imid)}(outmid{assign_outmid_to_b(imid)} == cb_idxs(imid)) = []; % now remove 
+    tasks.perm = [task_a_out(randsample(length(task_a_out), n_take_from_out)), ...
+                  task_a_in(randsample(length(task_a_in), n_take_from_in)), ...
+                  task_b_out(randsample(length(task_b_out), n_take_from_out)), ...
+                  task_b_in(randsample(length(task_b_in), n_take_from_in))];
+    comp_choice = randsample(2, 1);
+    if comp_choice == 1
+        tasks.comp = tasks.a;
+    else
+        tasks.comp = tasks.b;
     end
 
-    % hardcoded - warning!
-    ca_idxs(3) = outest(assign_outer_to_a);
-    cb_idxs(3) = outest(assign_outer_to_b);
-    ca_idxs(4) = inner(assign_innest_to_a);
-    cb_idxs(4) = inner(assign_innest_to_b);
 end

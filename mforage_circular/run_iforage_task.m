@@ -39,11 +39,6 @@ where = 0; % office
 %%%%%% manual things
 sub.num = input('sub number? ');
 sub.stage = input('stage? 1 for learning, 2 for training, 3 for test ');
-if sub.stage == 3
-    sub.transfer_block = input('transfer block? 1, 2, or 3...');
-else
-    sub.transfer_block = 0;
-end
 sub.tpoints = 0; % enter points scored so far
 sub.experiment = 'circ';
 
@@ -56,11 +51,12 @@ sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
 load('sub_info.mat')
 sub_config = sub_info(sub.num);
 clear('sub_info');
+grp = sub_config.grp;
 
 version   = 1; % change to update output files with new versions
 stage = sub.stage;
 % set randomisation seed based on sub/sess number
-r_num = [num2str(sub.num) num2str(sub.stage) num2str(sub.transfer_block)];
+r_num = [num2str(sub.num) num2str(sub.stage)];
 r_num = str2double(r_num);
 rand('state',r_num);
 randstate = rand('state');
@@ -77,7 +73,7 @@ else
     house = 0; % not relevant because we are mixing up the houses, so set to zero
 end
 [beh_form, beh_fid] = initiate_sub_beh_file(sub.num, sub.stage, ...
-    sub.transfer_block, sub_dir, exp_code, house); % this is the behaviour and the events log
+    sub_dir, exp_code, house); % this is the behaviour and the events log
 
 % % probabilities of target location and number of doors
 % this is to future proof against when we want to vary probabilities
@@ -102,36 +98,35 @@ elseif stage == 1 && house == 9
     trials = generate_trial_structure_learn(ntrials, sub_config, ...
         door_probs, house); 
 
-% elseif stage == 2
+elseif stage == 2
 
-%     n_practice_trials = 0;
-%     ntrials = 4*40; % must have whole integers for p=.7/.3 or .95/.05
-%     lo_switch = .05;
-%     hi_switch = .3;
-%     if sub_config(2) == 1
-%         switch_prob = lo_switch;
-%     elseif sub_config(2) == 2
-%         switch_prob = hi_switch;
-%     end
-%     max_reward_trials = ntrials - (ntrials*hi_switch); % 
-%     [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
-% 
-%     % now allocate 50 % of the switch trials to be reward available trials
-%     reward_trials = find(~diff(trials(:,2)))+1;
-%     n_reward_trials = min(max_reward_trials, round(length(reward_trials)/2));
-%     reward_trials = datasample(reward_trials, n_reward_trials, 'Replace',false);
-%     reward_trials = sort(reward_trials, 'ascend');
-% elseif stage == 3
-%     n_practice_trials = 0;
-%     if experiment == 1
-%         ntrials = 4*20;
-%         switch_prob = .5;
-%         [trials, ca_ps, cb_ps] = generate_trial_structure_tstest(ntrials, sub_config, door_probs, switch_prob);
-%     elseif experiment == 2
-%         ntrials = 4*10;
-%         n_trials_per_transfer_type = ntrials;
-%         [trials, ca_ps, cb_ps] = generate_trial_structure_lttest(ntrials, sub_config, door_probs);
-%     end
+    n_practice_trials = 0;
+    ntrials = 4*40; % must have whole integers for p=.7/.3 or .95/.05
+    lo_switch = .05;
+    hi_switch = .3;
+    if grp == 1
+        switch_prob = lo_switch;
+    elseif grp == 2
+        switch_prob = hi_switch;
+    end
+    max_reward_trials = ntrials - (ntrials*hi_switch); % 
+    [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
+
+    % now allocate 50 % of the stay trials to be reward available trials
+    reward_trials = find(~diff(trials(:,2)))+1;
+    n_reward_trials = min(max_reward_trials, round(length(reward_trials)/2));
+    reward_trials = datasample(reward_trials, n_reward_trials, 'Replace',false);
+    reward_trials = sort(reward_trials, 'ascend');
+
+elseif stage == 3
+
+    n_practice_trials = 0;
+    ntrials = 6*10;
+    ntransfer = 3; % there are 3 transfer tasks
+    n_trials_per_transfer_type = ntrials;
+    [trials, novel_ps, perm_ps, comp_ps] = generate_trial_structure_lttest(ntrials, sub_config, ...
+        door_probs, ntransfer);
+
 end
 
 % now for each stage, form a matrix of the door probabilities, relevant to
@@ -150,11 +145,18 @@ if stage == 1
         door_ps(2, task_b_doors) = max(door_probs);
     else
 
-        door_ps(1,task_a_doors) = max(door_probs);
+        door_ps(1, task_a_doors) = max(door_probs);
         door_ps(2, task_b_doors) = max(door_probs);
     end
-else
-      %  door_ps = [ca_ps; cb_ps; repmat(1/length(ca_ps), 1, length(ca_ps))]; % create a tt x door matrix for display referencing later
+elseif stage == 2
+
+    door_ps = [ca_ps; cb_ps; repmat(1/length(ca_ps), 1, length(ca_ps))]; % create a tt x door matrix for display referencing later
+
+elseif stage == 3
+
+    door_ps = [novel_ps; ...
+               perm_ps; ...
+               comp_ps];
 end
 
 % add the 5 practice trials to the start of the matrix
@@ -168,10 +170,9 @@ if stage == 1 && house == 1
 end
 
 write_trials_and_params_file(sub.num, stage, exp_code, ...
-    sub.transfer_block, house, ...
+    house, ...
     trials, ...
     door_probs, sub_config, sub_dir);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% define colour settings for worlds
@@ -180,30 +181,30 @@ write_trials_and_params_file(sub.num, stage, exp_code, ...
 % Context cue goes around the edge and will need something defined
 
 % first put the colours in order of the counterbalancing
-green = [127, 201, 127]; 
-purple = [190, 174, 212];
-orange = [253, 192, 134];
-yellow = [255, 255, 153];
-pink = [240, 2, 127]; 
+green = [77, 175, 74]; 
+purple = [152, 87, 163];
+orange = [255, 127, 0];
+red = [228, 26, 28];
+blue = [55, 126, 184]; 
+neutral = [255, 255, 255] - 50; % have a white border when no task set is relevant
 
-colour_options = {green, purple, orange, yellow, pink};
+colour_options = {green, purple, orange, red, blue};
 sub_colours = colour_options(sub_config.col_assign); % this means
 % that the sub_colours go [house1, house2, transfer1, transfer2, transfer3]
 
-base_context_learn = [sub_colours{1}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
+base_context_learn = [sub_colours{1}; ... 
                       sub_colours{2}];
-transfer_context_learn = [sub_colours{3}; ... % KG: CHANGE THIS IF CHANGING SUB_CONFIG STRUCTURE
+transfer_context_learn = [sub_colours{3}; ... 
                           sub_colours{4};
                           sub_colours{5}];
 if stage == 1
     
     context_cols =  [base_context_learn(1, :); 
                      base_context_learn(2, :); 
-                     [0, 0, 0]]; % finish with practice context cols
+                     neutral]; % finish with practice context cols
 elseif stage == 2
 
-    neutral_col = [0, 0, 0];
-    context_cols = [neutral_col; neutral_col; neutral_col];
+    context_cols = [neutral; neutral; neutral];
 
 elseif stage == 3
 
@@ -214,7 +215,7 @@ end
 %%%%%%% other considerations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-breaks = 30; % how many trials inbetween breaks?
+breaks = 20; % how many trials inbetween breaks?
 count_blocks = 0;
 button_idx = 1; % which mouse button do you wish to poll? 1 = left mouse button
 
@@ -259,8 +260,8 @@ display_scale = 1; % VARIABLE TO SCALE the display size
 % colour = you can provide a 3 or 4 row vector,which specifies an individual RGB or RGBA color
 % for each corresponding point
 % first, I define the main circle that everything will be drawn on
-r_main = 100*pix_per_mm*display_scale; % 100 mm
-r_edge = 104*pix_per_mm*display_scale; % for the coloured edge
+r_main = 87*pix_per_mm*display_scale; % 100 mm
+r_edge = 94*pix_per_mm*display_scale; % for the coloured edge
 % setting up a rect for the main for using filloval instead
 d_base = [0, 0, r_main*2, r_main*2];
 d_cent = CenterRectOnPointd(d_base, xCenter, yCenter);
@@ -271,7 +272,7 @@ main_col = [160 160 160]; % set up the colours of the doors
 %%%%%%%%%%% set up doors
 inner_r_mm = 30;
 n_inner = 8; % 8 doors on the inner ring
-outer_r_mm = 70;
+outer_r_mm = 60;
 n_outer = 16; % 16 doors on the outer ring
 ndoors = n_inner + n_outer;
 [door_xys, door_size] = door_setup(pix_per_mm, display_scale, ...
@@ -281,6 +282,7 @@ ndoors = n_inner + n_outer;
 %%% door colours
 hole = [20, 20, 20];
 door_closed_cols = repmat([96, 96, 96]', 1, ndoors); 
+door_greyed_cols = door_closed_cols + 30;
 door_open_col = hole;
 
 %door_cols = rep
@@ -289,7 +291,7 @@ door_open_col = hole;
 r = door_size/2; % radius is the distance from center to the edge of the door
 
 % and finally, the details for the fixation point
-fix_r_mm = 5*pix_per_mm*display_scale;
+fix_r_mm = 8*pix_per_mm*display_scale;
 d_fix = fix_r_mm*2;
 fix_col = [0, 0, 0];
 
@@ -299,6 +301,13 @@ srch_tgts = 1:4;
 % and make a rect for presenting the break images
 base_pix   = 180*pix_per_mm*display_scale; 
 backRect   = [0 0 base_pix base_pix];
+
+% now make the textures for shiny badges
+badge_names = {'Bronze', 'Silver', 'Gold', 'Champion'}; % DEFINE FOR REG AND LOCKED
+[badge_textures, badge_rects] = setup_badges(window, screenXpixels, ...
+    screenYpixels, 50, pix_per_mm, badge_names);
+points_structure = [3000, 12000, 17000, 22000]/2; % taken from flexi exp but divide by 2 as
+% half the number of training trials
 
 % timing 
 time.ifi = Screen('GetFlipInterval', window);
@@ -350,7 +359,8 @@ for count_trials = 1:length(trials(:,1))
 
  
     if count_trials == 1
-        run_instructions(window, screenYpixels, stage, experiment, house);
+        run_instructions(window, screenYpixels, stage, house, ...
+            badge_rects, badge_textures, points_structure);
         KbWait;
         WaitSecs(1); 
     end
@@ -375,12 +385,19 @@ for count_trials = 1:length(trials(:,1))
     %%%%%% run trial
     tgt_found = 0;
    
-    draw_fix(window, xCenter, yCenter, d_cent, main_col, d_fix, fix_col)
+    draw_fix(window, xCenter, yCenter, e_cent, neutral, ...
+        d_cent, main_col, ...
+        d_fix, fix_col, ...
+        door_xys, door_size, door_greyed_cols);
+
     vbl = Screen('Flip', window);
     fix_hit = 0;
 
     while ~any(fix_hit)
-        draw_fix(window, xCenter, yCenter, d_cent, main_col, d_fix, fix_col);
+        draw_fix(window, xCenter, yCenter, e_cent, neutral, ...
+            d_cent, main_col, ...
+            d_fix, fix_col, ...
+            door_xys, door_size, door_greyed_cols);
         Screen('DrawingFinished', window);
         vbl = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi); % limit samples to flip rate
 
@@ -470,15 +487,9 @@ for count_trials = 1:length(trials(:,1))
     while buttons(button_idx)
         [~,~,buttons] = GetMouse(window);
     end
+    wait_on = GetSecs;
+    WaitSecs(0.5-(wait_on - tgt_on)); % just create a small gap between target offset and onset, but not on the proactive switching task
 
-
-
-    if stage == 3 && experiment == 1
-    else
-       wait_on = GetSecs;
-       WaitSecs(0.5-(wait_on - tgt_on)); % just create a small gap between target offset and onset, but not on the proactive switching task 
-        % stop sound
-    end
     % of next door
     tpoints = tpoints + points;
 
@@ -494,7 +505,11 @@ for count_trials = 1:length(trials(:,1))
         if count_trials == n_practice_trials
         else
             take_a_break(window, count_trials-n_practice_trials, ntrials*2, ...
-                breaks, backRect, xCenter, yCenter, screenYpixels, tpoints, stage);
+                breaks, backRect, ...
+                xCenter, yCenter, screenYpixels, ...
+                tpoints, ...
+                stage, ...
+                points_structure, badge_rects, badge_textures);
             KbWait;
         end
         WaitSecs(1);
@@ -513,7 +528,7 @@ if stage == 1 && house < 9
     if count_trials > n_practice_trials + n_correct_required
         go = tally_moves(moves_record, moves_goal, count_trials, n_correct_required); % returns a true if we should proceed as normal
 
-        if ~go
+        if ~go 
             break
         end
     end
@@ -522,7 +537,7 @@ elseif stage == 1 && house == 9
     moves_record = [moves_record, door_select_count];
 end % end stage 1 response tally
 
-if stage == 3 && experiment == 2 && count_trials == n_trials_per_transfer_type
+if stage == 3 && count_trials == n_trials_per_transfer_type
     run_house_change(window, screenYpixels); % let participants know they are changing house
 end
     
@@ -533,7 +548,7 @@ Priority(0);
 PsychPortAudio('Close');
 Screen('CloseAll');
 
-sprintf('total points = %d', tpoints)
+%sprintf('total points = %d', tpoints)
 if stage == 1 && house < 9 &&  ~go
     sprintf('achievement unlocked! proceed to next level')
 elseif stage == 1 && house < 9 && count_trials == length(trials(:,1))

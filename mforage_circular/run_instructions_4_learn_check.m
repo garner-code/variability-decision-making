@@ -9,8 +9,8 @@ function [] = run_instructions_4_learn_check(window, screenYpixels)
 
 Screen('TextStyle', window, 1);
 Screen('TextSize', window, 20);
-
-DrawFormattedText(window, instructions,'Center', screenYpixels*.3, [0 0 255]);
+instruct_col = [255, 255, 255];
+DrawFormattedText(window, instructions,'Center', screenYpixels*.3, instruct_col);
 Screen('Flip', window);
 
 end

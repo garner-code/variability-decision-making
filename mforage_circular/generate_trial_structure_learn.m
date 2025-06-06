@@ -64,7 +64,9 @@ if house < 9 % if house 1 or 2 then only make trials from one house
     trial_struct(:, 4) = max(door_probs); % this needs to change if you ever have varying probabilities of the target doors
 
     % now add which target will be presented on that trial
-    trial_struct(:,5) = NaN; % this is not relevant, but keeping in case we need in future
+    trial_struct(:,5) = NaN; % this is not relevant, it indexed the target number drawn from the stack of 0-100, 
+    % and we now have four folders/categories
+    % but keeping in case we need in future
 
 else % if not, make blocks of both trials
 

@@ -12,8 +12,8 @@ function [points, tgt_on] = draw_target_v2(window, ...
 % now compute performance relative to target
 if feedback_on
 
-    if door_select_count >= feedback_goal
-        points = 0;
+    if door_select_count > feedback_goal
+        points = 100;
     else
         points = (feedback_goal+1) - door_select_count;
     end

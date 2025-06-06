@@ -1,8 +1,12 @@
 function [] = draw_fix(window, xCenter, yCenter, ...
+    e_cent, edge_col, ...
     d_cent, main_col, ...
-    d_fix, fix_col)
+    d_fix, fix_col, ...
+    door_xys, door_size, door_cols)
 
     % draw background and then fixation dot
+    Screen('FillOval', window, edge_col, e_cent);
     Screen('FillOval', window, main_col, d_cent);
     Screen('DrawDots', window, [xCenter; yCenter],  d_fix, fix_col, [], 2);
+    Screen('DrawDots', window, door_xys, door_size, door_cols, [], 2);
 end

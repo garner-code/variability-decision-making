@@ -1,0 +1,14 @@
+function [idxs, new_outer, new_inner] = grab_random_idxs_for_task_locs(outer, inner)
+
+% first grab some indexes for the current task
+inner = inner(~cellfun('isempty', inner));
+these_inners = randperm(length(inner), 2);
+tmp_outer = cellfun(@(x) x(randperm(length(x),1)), outer);
+tmp_inner = cellfun(@(x) x(randperm(length(x),1)), inner(these_inners));
+idxs = sort([tmp_outer, tmp_inner]);
+
+% now remove the selected indeces from outer and inner
+new_outer = cellfun(@(x) setdiff(x,tmp_outer), outer, 'UniformOutput', false);
+new_inner = cellfun(@(x) setdiff(x,tmp_inner), inner, 'UniformOutput', false);
+
+end

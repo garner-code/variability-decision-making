@@ -7,12 +7,6 @@ Code for collection and analysis of behavioural/EEG data
 Free to use and share, please cite author/source  
 Email: getkellygarner@gmail.com
 
-A study conducted with: 
-Ole Jensen
-Paul Dux
-Li-Ann Leow
-Marta Garrido 
-
 This repository contains the software written for collecting the behavioural and EEG data for the projects described at:
 https://osf.io/k5ury/wiki/home/
 and

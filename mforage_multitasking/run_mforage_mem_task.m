@@ -114,7 +114,7 @@ if stage == 1
 elseif stage == 10
 
     n_practice_trials = 0;
-    ntrials = 80; % KG: MFORAGE - max per context
+    ntrials = 200; % KG: MFORAGE - max per context
     [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house);
 
 elseif stage == 2
@@ -140,8 +140,7 @@ elseif stage == 2
 elseif stage == 3
     
     n_practice_trials = 0;
-    ntrials = 120; % 90 in each context - have 60 performed w a memory probe
-    % and 30 without - that leaves 30 for each condition
+    ntrials = 120; % 
     switch_prob = 1;
     [trials, ca_ps, cb_ps] = generate_trial_structure_train(ntrials, sub_config, door_probs, switch_prob);
     nmts_trials = 16; % number of trials from contexts 1, 2, 3, and 4 - i.e. n is multiplied by 4

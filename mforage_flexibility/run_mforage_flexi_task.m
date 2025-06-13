@@ -35,7 +35,7 @@ clear mex
 % task, pc, matlab and psychtoolbox version, eeg system (amplifier, hardware filter, cap, placement scheme, sample
 % rate), red smi system, description of file structure
 %%%%%% manual things
-where = 0; % if 0, in lab, if 1, in office, if 2, at home
+where = 1; % if 0, in lab, if 1, in office, if 2, at home
 if ~where
     aud_device = [];
 elseif where == 1

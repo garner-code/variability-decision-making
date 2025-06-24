@@ -100,7 +100,7 @@ if stage == 1
 elseif stage == 10 
 
     n_practice_trials = 0;
-    ntrials = 80; % KG: MFORAGE - max per context
+    ntrials = 200; % KG: MFORAGE - max per context
     [trials, ca_ps] = generate_trial_structure_learn(ntrials, sub_config, door_probs, house); 
 
 elseif stage == 2

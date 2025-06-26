@@ -43,7 +43,7 @@ sub.tpoints = 0; % enter points scored so far
 sub.experiment = 'circ';
 
 experiment = sub.experiment;
-exp_code = sub.experiment;
+exp_code = sub.experiment; 
 
 sub_dir = make_sub_folders(sub.num, sub.stage, exp_code);
 
@@ -59,7 +59,7 @@ stage = sub.stage;
 r_num = [num2str(sub.num) num2str(sub.stage)];
 r_num = str2double(r_num);
 rand('state',r_num);
-randstate = rand('state');
+randstate = rand('state'); 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%% generate trial structure for participants and setup log files
@@ -77,8 +77,8 @@ end
 
 % % probabilities of target location and number of doors
 % this is to future proof against when we want to vary probabilities
-ndoors_w_tgt = 6; % 6 doors per task in this iteration
-ndoors_wo_tgt = 24-ndoors_w_tgt;
+ndoors_w_tgt = 4; % 6 doors per task in this iteration. EC changed to 4
+ndoors_wo_tgt = 20-ndoors_w_tgt; 
 door_probs = [repmat(1/ndoors_w_tgt, 1, ndoors_w_tgt), ...
               repmat(0, 1, ndoors_wo_tgt)];
 ndoors = length(door_probs);
@@ -273,7 +273,7 @@ main_col = [160 160 160]; % set up the colours of the doors
 inner_r_mm = 30;
 n_inner = 8; % 8 doors on the inner ring
 outer_r_mm = 60;
-n_outer = 16; % 16 doors on the outer ring
+n_outer = 12; % 12 doors on the outer ring
 ndoors = n_inner + n_outer;
 [door_xys, door_size] = door_setup(pix_per_mm, display_scale, ...
     n_inner, inner_r_mm, n_outer, outer_r_mm, ...
@@ -491,7 +491,7 @@ for count_trials = 1:length(trials(:,1))
     WaitSecs(0.5-(wait_on - tgt_on)); % just create a small gap between target offset and onset, but not on the proactive switching task
 
     % of next door
-    tpoints = tpoints + points;
+    tpoints = tpoints + (points*100);
 
     if stage == 1 && house == 1 && count_trials == n_practice_trials
 

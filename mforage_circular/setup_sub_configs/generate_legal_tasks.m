@@ -18,7 +18,7 @@
 %%% first I select four thetas from the original set to form a simplified
 %%% task. Then I add a constant to the thetas, based on how many steps
 %%% around the circle I want the four points to collectively jump
-n_outer = 16;
+n_outer = 12;
 thetas = (10:(360/n_outer):360) * pi/180;
 these_thetas = thetas(randperm(length(thetas), 4));
 theta_diff = unique(diff(thetas)); % this gives me how much thetas can be shifted by

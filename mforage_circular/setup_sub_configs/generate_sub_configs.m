@@ -7,7 +7,7 @@
 %%%% sub_info(id).trnsfr_order (see below)
 %%%% sub_info(id).col_assign (randomly assigned colour idxs 1:5)
 clear all
-rng(42); % meaning of life
+rng(50); % meaning of life + 8
 
 % counterbalancing:
 % house learned 1st: A B vs B A
@@ -29,8 +29,8 @@ nsubs = n_per_grp * n_grps;
 
 % now I will generate all the task sets we need, given n et al
 n_task_sets_2_make = 4;
-for i = 1:n_task_sets_2_make
-    tasks(i) = assign_target_locations(i);
+for i = 1:n_task_sets_2_make % EC: for each task set,
+    tasks(i) = assign_target_locations(i); % EC: assign new target locations
 end
 
 % now I define the transfer orders as above

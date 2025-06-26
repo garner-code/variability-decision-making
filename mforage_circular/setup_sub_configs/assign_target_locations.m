@@ -16,11 +16,11 @@ function [tasks] = assign_target_locations(i)
     %%%% we change the display then this needs to be re-run.
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%% DEFINE THE DOOR LOCATION INFO
-    n_inner = 8;
+    n_inner = 8; % 8 inner doors
     inner_r = 30;
     inner_thetas = (10:(360/n_inner):360) * pi/180;
     inner_theta_diff = unique(round(diff(inner_thetas),4));
-    n_outer = 16;
+    n_outer = 12; % 12 outer doors
     outer_r = 60;
     outer_thetas = (10:(360/n_outer):360) * pi/180;
     outer_theta_diff = unique(round(diff(outer_thetas),4));
@@ -28,12 +28,12 @@ function [tasks] = assign_target_locations(i)
   
     %%%%% STEP 1: Select the first task 
 
-    outer = {1:4, 5:8, 9:12, 13:16}; % each cell is one quadrant 
-    inner = {17:18, 19:20, 21:22, 23:24}; 
-    outer_idxs = 1:4;
-    inner_idxs = 5:6;
+    outer = {1:3, 4:6, 7:9, 10:12}; % each cell is one quadrant. EC: updated door numbers
+    inner = {13:14, 15:16, 17:18, 19:20}; % EC: as above
+    outer_idx = 1:2; % when you get your vector of target door locations, which 2 are from the outer ring?
+    inner_idx = 3:4; % same as above but for inner
     [ta_idxs, nu_outer, nu_inner] = grab_random_idxs_for_task_locs(outer,...
-        inner);
+        inner); % output is [taskA locs, remaining outer doors, remaining inner doors]
     % on the basis of these locations, get the thetas
     task_a_thetas = thetas(ta_idxs);
 
@@ -48,11 +48,11 @@ function [tasks] = assign_target_locations(i)
             t_thetas = thetas(idxs);
             % test whether the new task is legal
             legal = check_legal(task_a_thetas, t_thetas, outer_theta_diff, ...
-                outer_r, inner_r);
+                outer_r, inner_r, outer_idx, inner_idx);
         end
         % found a legal set so throw out the indexes for the next round
         [nu_outer, nu_inner] = throw_away_used_idxs(nu_outer, nu_inner, ...
-            idxs(outer_idxs), idxs(inner_idxs)); % warning hardcoded idxs
+            idxs(outer_idx), idxs(inner_idx)); % warning hardcoded idxs
         % and add the new task indexes to the matrix
         bn_idxs(i_choose, :) = idxs;
     end
@@ -63,15 +63,15 @@ function [tasks] = assign_target_locations(i)
     tasks.b = bn_idxs(1,:);
     tasks.novel = bn_idxs(2,:); % novel task
    
-    n_take_from_out = 2;
+    n_take_from_out = 1; % EC: need to change this
     n_take_from_in = 1;
 
-    tasks.perm = sort([ta_idxs(randperm(max(outer_idxs),n_take_from_out)), ...
-                       ta_idxs(randperm(length(inner_idxs),n_take_from_in) + max(outer_idxs)), ...
-                       bn_idxs(1, randperm(max(outer_idxs),n_take_from_out)), ... 
-                       bn_idxs(1, randperm(length(inner_idxs),n_take_from_in) + max(outer_idxs))]);
+    tasks.perm = sort([ta_idxs(randperm(max(outer_idx),n_take_from_out)), ...
+                       ta_idxs(randperm(length(inner_idx),n_take_from_in) + max(outer_idx)), ...
+                       bn_idxs(1, randperm(max(outer_idx),n_take_from_out)), ... 
+                       bn_idxs(1, randperm(length(inner_idx),n_take_from_in) + max(outer_idx))]);
     % now plot the tasks for sanity checking
-    rs = [repmat(outer_r, 1, length(outer_idxs)), repmat(inner_r, 1, length(inner_idxs))];
+    rs = [repmat(outer_r, 1, length(outer_idx)), repmat(inner_r, 1, length(inner_idx))];
     figure;
     subplot(2,2,1)
     polarplot(thetas(tasks.a), rs, 'o');

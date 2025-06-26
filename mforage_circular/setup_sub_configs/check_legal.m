@@ -1,13 +1,12 @@
 function [legal] = check_legal(x_thetas, y_thetas, outer_theta_diff, ...
-    outer_r, inner_r)
+    outer_r, inner_r, outer_idx, inner_idx)
 
 % the first question is whether x and y are rotated
 % if there is a rotation, then there should be a single scalar value
 % where old_thetas = new_thetas + (k*theta_diff)
 % I found it took forever to find tasks that were not rotated on the inner
 % layer, so sticking to only ensuring no rotation on the outer layer
-outer_idx = 1:4;
-inner_idx = 5:6;
+
 outer_rots = (y_thetas(outer_idx)-x_thetas(outer_idx))./outer_theta_diff;
 o_rot = sum(diff(round(outer_rots, 2)) > 0); % should be > 0
 % inner_rots = (y_thetas(inner_idx)-x_thetas(inner_idx))./inner_theta_diff;

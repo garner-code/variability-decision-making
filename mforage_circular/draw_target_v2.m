@@ -13,7 +13,7 @@ function [points, tgt_on] = draw_target_v2(window, ...
 if feedback_on
 
     if door_select_count > feedback_goal
-        points = 100;
+        points = 0;
     else
         points = (feedback_goal+1) - door_select_count;
     end

@@ -306,8 +306,12 @@ backRect   = [0 0 base_pix base_pix];
 badge_names = {'Bronze', 'Silver', 'Gold', 'Champion'}; % DEFINE FOR REG AND LOCKED
 [badge_textures, badge_rects] = setup_badges(window, screenXpixels, ...
     screenYpixels, 50, pix_per_mm, badge_names);
-points_structure = [3000, 12000, 17000, 22000]/2; % taken from flexi exp but divide by 2 as
-% half the number of training trials
+% in this iteration, there are 112 reward trials, and if performing perfectly, 
+% participants can get the target in an average of 2.5 moves per trial,
+% therefore the EV points per trial is 250, meaning a max
+% of 28000 for doing the task perfectly
+max_points = 28000;
+points_structure = max_points * [.2, .5, .75, .85]; 
 
 % timing 
 time.ifi = Screen('GetFlipInterval', window);
@@ -339,7 +343,7 @@ if where
 else
     coin_handles = 0;
 end
-feedback_goal = 6;
+feedback_goal = 4;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%% now we're ready to run through the experiment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

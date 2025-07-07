@@ -87,14 +87,14 @@ ndoors = length(door_probs);
 if stage == 1 && house < 9% if its initial learning
 
     n_practice_trials = 5;
-    ntrials = 300; % allows 50 exposures to each target location
+    ntrials = 200; % allows 50 exposures to each target location
     trials = generate_trial_structure_learn(ntrials, sub_config, ...
         door_probs, house);    
 
 elseif stage == 1 && house == 9
 
     n_practice_trials = 0;
-    ntrials = 120; 
+    ntrials = 80; 
     trials = generate_trial_structure_learn(ntrials, sub_config, ...
         door_probs, house); 
 
@@ -121,7 +121,7 @@ elseif stage == 2
 elseif stage == 3
 
     n_practice_trials = 0;
-    ntrials = 6*10;
+    ntrials = 4*10;
     ntransfer = 3; % there are 3 transfer tasks
     n_trials_per_transfer_type = ntrials;
     [trials, novel_ps, perm_ps, comp_ps] = generate_trial_structure_lttest(ntrials, sub_config, ...
